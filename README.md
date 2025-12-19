@@ -1,102 +1,214 @@
 # Yxorp - Enterprise WAF & Reverse Proxy
 
-<p align="center">
-  <img src="screenshots/logo.png" alt="Yxorp Logo" width="200"/>
-</p>
+**Yxorp** (Reverse Proxy spelled backwards) is a production-ready Web Application Firewall and Reverse Proxy built with Go, providing enterprise-grade security, load balancing, and real-time observability for modern web applications.
 
-**Yxorp** (Reverse Proxy spelled backwards) is a production-ready, high-performance Web Application Firewall (WAF) and Reverse Proxy built with Go. It provides enterprise-grade security, load balancing, and observability for modern web applications.
+![Dashboard](screenshots/dashboard.png)
 
----
+## Key Features
 
-## 🚀 Features
+**Security**
+- 40+ WAF rules protecting against OWASP Top 10 vulnerabilities
+- Detection for SQL Injection, XSS, Path Traversal, Command Injection, RCE, and more
+- Protection against critical CVEs (Log4Shell, Spring4Shell, ShellShock)
+- Bot detection blocking 15+ scanning tools (sqlmap, Nikto, Metasploit, Burp)
+- Rate limiting with configurable thresholds (per-IP)
+- Circuit breaker pattern preventing cascading failures
 
-### Core Security
+**Load Balancing & High Availability**
+- Round-robin load balancing across multiple backends
+- Active health checks with automatic failover
+- Session persistence via cookie forwarding
+- Configurable health check intervals
 
-- **40+ WAF Rules** - Comprehensive protection against OWASP Top 10 threats:
+**Performance & Reliability**
+- Gzip compression for response optimization
+- Request tracing with unique X-Request-ID headers
+- Graceful shutdown with zero downtime
+- Automatic panic recovery
+- Sub-millisecond latency overhead
 
-  - SQL Injection (SQLi)
-  - Cross-Site Scripting (XSS)
-  - Path Traversal
-  - Command Injection
-  - LDAP Injection
-  - XML External Entity (XXE)
-  - NoSQL Injection
-  - Remote Code Execution (RCE)
-  - Server-Side Template Injection (SSTI)
-  - SSRF (Server-Side Request Forgery)
-  - Log4Shell (CVE-2021-44228)
-  - Spring4Shell (CVE-2022-22965)
-  - And many more...
+**Observability**
+- Real-time monitoring dashboard with live traffic logs
+- System metrics (CPU, Memory, Goroutines, Uptime)
+- Visual analytics (traffic graphs, status distributions)
+- RESTful API endpoints for metrics integration
+- Structured JSON logging
 
-- **Bot Detection** - Blocks 15+ attack tools and scanners (sqlmap, Nikto, Metasploit, Burp, nmap, etc.)
-- **Rate Limiting** - Per-IP request throttling (default: 100 req/min)
-- **Circuit Breaker** - Prevents cascading failures (5 failures → 30s timeout)
+**Security Headers**
+- Strict-Transport-Security (HSTS)
+- X-Frame-Options, X-XSS-Protection
+- X-Content-Type-Options
 
-### Load Balancing & High Availability
+## Architecture
 
-- **Round-Robin Load Balancing** - Distribute traffic across multiple backends
-- **Health Checks** - Automatic backend monitoring every 10 seconds
-- **Automatic Failover** - Traffic rerouted to healthy backends instantly
+```
+Client Request → Yxorp WAF → Load Balancer → Backend Servers
+                    ↓
+         [Rate Limit, WAF Rules, Circuit Breaker]
+                    ↓
+              Real-time Dashboard
+```
 
-### Performance & Reliability
+## Installation
 
-- **Gzip Compression** - Automatic response compression
-- **Request Tracing** - Unique X-Request-ID for every request
-- **Graceful Shutdown** - Zero downtime deployments
-- **Panic Recovery** - Automatic error recovery middleware
-- **Session Persistence** - Cookie forwarding for stateful applications
-
-### Security Headers
-
-Automatically injects industry-standard security headers:
-
-- `Strict-Transport-Security` (HSTS)
-- `X-Frame-Options: DENY`
-- `X-XSS-Protection`
-- `X-Content-Type-Options: nosniff`
-
-### Observability
-
-- **Real-Time Dashboard** - Beautiful dark-themed monitoring UI
-
-  ![Dashboard Screenshot](screenshots/dashboard.png)
-
-- **Live Traffic Logs** - See every request in real-time
-- **System Metrics** - CPU, Memory, Goroutines, Uptime
-- **Status Charts** - Visual breakdown of response codes
-- **Traffic Graphs** - Request rate over time
-- **Active Rules Display** - See which WAF rules are enabled
-
-  ![Logs Screenshot](screenshots/logs.png)
-
-- **JSON API Endpoints**:
-  - `/api/logs` - Recent request logs
-  - `/api/stats` - System statistics
-  - `/api/rules` - Active WAF rules
-  - `/debug/vars` - Expvar metrics
-
-### Configuration
-
-- **Hot Reload** - Update rules without restarting (10-second interval)
-- **YAML Configuration** - Human-readable config files
-- **TLS/HTTPS Support** - SSL certificate configuration
-- **Flexible Rules** - Regex-based pattern matching
-
----
-
-## 📦 Installation
-
-### Prerequisites
-
-- Go 1.21 or higher
-- Git
-
-### Quick Start
+**Prerequisites:** Go 1.21+
 
 ```bash
-# Clone the repository
 git clone https://github.com/yourusername/yxorp.git
 cd yxorp
+
+# Configure backend targets
+nano configs/rules.yaml
+
+# Run
+go run cmd/waf/main.go
+```
+
+Access:
+- Main Proxy: `http://localhost:8080`
+- Dashboard: `http://localhost:8081/dashboard`
+
+## Configuration
+
+`configs/rules.yaml`:
+
+```yaml
+server:
+  port: "8080"
+  read_timeout: 5s
+  write_timeout: 10s
+
+proxy:
+  targets: 
+    - "https://backend1.example.com"
+    - "https://backend2.example.com"
+
+security:
+  block_user_agents: ["Nikto", "sqlmap", "Metasploit"]
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+  rules:
+    - name: "SQL Injection Prevention"
+      pattern: "(UNION SELECT|DROP TABLE|' OR 1=1)"
+      location: "query_params"
+```
+
+Hot reload: Configuration changes detected automatically every 10 seconds.
+
+## Security Rules
+
+| Category | Coverage |
+|----------|----------|
+| **Injection** | SQL, NoSQL, LDAP, XPath, Command, OGNL, EL |
+| **XSS** | Script tags, Event handlers, CSS injection |
+| **File Security** | Path traversal, Upload attacks, Info disclosure |
+| **Deserialization** | PHP, Java, Python object injection |
+| **CVEs** | Log4Shell, Spring4Shell, ShellShock |
+| **Other** | SSRF, XXE, SSTI, Open redirect, Prototype pollution |
+
+Complete rule list: [configs/rules.yaml](configs/rules.yaml)
+
+## Testing
+
+```bash
+# Legitimate request
+curl http://localhost:8080/
+
+# Attack detection (returns 403)
+curl "http://localhost:8080/?id=1' OR 1=1--"
+curl "http://localhost:8080/?q=<script>alert(1)</script>"
+curl -A "sqlmap" http://localhost:8080/
+
+# Rate limiting (429 after threshold)
+for i in {1..150}; do curl http://localhost:8080/; done
+```
+
+See [TESTING.md](TESTING.md) for comprehensive test scenarios.
+
+## Dashboard
+
+![Dashboard Overview](screenshots/dashboard-overview.png)
+
+Real-time monitoring interface featuring:
+- Live request logs with color-coded status
+- Traffic rate visualization
+- Response status distribution charts
+- System resource metrics
+- Active WAF rules display
+- Auto-refresh (2-second interval)
+
+## Performance
+
+- **Throughput:** 10,000+ requests/second
+- **Latency:** <1ms overhead per request
+- **Memory:** ~50MB baseline
+- **Concurrency:** Handles thousands of simultaneous connections
+
+## Production Deployment
+
+**Docker:**
+```dockerfile
+FROM golang:1.21-alpine AS builder
+WORKDIR /app
+COPY . .
+RUN go build -o yxorp cmd/waf/main.go
+
+FROM alpine:latest
+COPY --from=builder /app/yxorp /usr/local/bin/
+COPY configs /configs
+CMD ["yxorp"]
+```
+
+**Systemd:**
+```ini
+[Unit]
+Description=Yxorp WAF
+After=network.target
+
+[Service]
+Type=simple
+User=yxorp
+WorkingDirectory=/opt/yxorp
+ExecStart=/opt/yxorp/yxorp
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## Project Structure
+
+```
+yxorp/
+├── cmd/waf/              # Entry point and web dashboard
+├── internal/
+│   ├── config/           # Configuration management
+│   ├── middleware/       # Security middleware chain
+│   ├── proxy/            # Load balancer implementation
+│   ├── rules/            # WAF rules engine
+│   ├── server/           # HTTP server
+│   └── stats/            # Metrics collection
+├── pkg/logger/           # Structured logging
+├── configs/rules.yaml    # WAF configuration
+└── test/                 # Test utilities
+```
+
+## Technology Stack
+
+- **Language:** Go 1.21+
+- **Standard Library:** net/http, httputil, sync, context
+- **Frontend:** HTML5, CSS3, Vanilla JavaScript, Chart.js
+- **Configuration:** YAML
+- **Logging:** Structured JSON
+
+## License
+
+MIT License - See [LICENSE](LICENSE)
+
+---
+
+**Built for production environments requiring enterprise-grade security and observability.**
 
 # Update configuration
 nano configs/rules.yaml

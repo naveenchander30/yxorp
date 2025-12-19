@@ -7,7 +7,7 @@ server:
 
 proxy:
   targets:
-    - "https://projects.deepanalve.dev"
+    - "example.com"
 
 security:
   block_user_agents:
