@@ -7,6 +7,7 @@
 ## Key Features
 
 **Security**
+
 - 40+ WAF rules protecting against OWASP Top 10 vulnerabilities
 - Detection for SQL Injection, XSS, Path Traversal, Command Injection, RCE, and more
 - Protection against critical CVEs (Log4Shell, Spring4Shell, ShellShock)
@@ -15,12 +16,14 @@
 - Circuit breaker pattern preventing cascading failures
 
 **Load Balancing & High Availability**
+
 - Round-robin load balancing across multiple backends
 - Active health checks with automatic failover
 - Session persistence via cookie forwarding
 - Configurable health check intervals
 
 **Performance & Reliability**
+
 - Gzip compression for response optimization
 - Request tracing with unique X-Request-ID headers
 - Graceful shutdown with zero downtime
@@ -28,6 +31,7 @@
 - Sub-millisecond latency overhead
 
 **Observability**
+
 - Real-time monitoring dashboard with live traffic logs
 - System metrics (CPU, Memory, Goroutines, Uptime)
 - Visual analytics (traffic graphs, status distributions)
@@ -35,6 +39,7 @@
 - Structured JSON logging
 
 **Security Headers**
+
 - Strict-Transport-Security (HSTS)
 - X-Frame-Options, X-XSS-Protection
 - X-Content-Type-Options
@@ -65,6 +70,7 @@ go run cmd/waf/main.go
 ```
 
 Access:
+
 - Main Proxy: `http://localhost:8080`
 - Dashboard: `http://localhost:8081/dashboard`
 
@@ -79,7 +85,7 @@ server:
   write_timeout: 10s
 
 proxy:
-  targets: 
+  targets:
     - "https://backend1.example.com"
     - "https://backend2.example.com"
 
@@ -98,14 +104,14 @@ Hot reload: Configuration changes detected automatically every 10 seconds.
 
 ## Security Rules
 
-| Category | Coverage |
-|----------|----------|
-| **Injection** | SQL, NoSQL, LDAP, XPath, Command, OGNL, EL |
-| **XSS** | Script tags, Event handlers, CSS injection |
-| **File Security** | Path traversal, Upload attacks, Info disclosure |
-| **Deserialization** | PHP, Java, Python object injection |
-| **CVEs** | Log4Shell, Spring4Shell, ShellShock |
-| **Other** | SSRF, XXE, SSTI, Open redirect, Prototype pollution |
+| Category            | Coverage                                            |
+| ------------------- | --------------------------------------------------- |
+| **Injection**       | SQL, NoSQL, LDAP, XPath, Command, OGNL, EL          |
+| **XSS**             | Script tags, Event handlers, CSS injection          |
+| **File Security**   | Path traversal, Upload attacks, Info disclosure     |
+| **Deserialization** | PHP, Java, Python object injection                  |
+| **CVEs**            | Log4Shell, Spring4Shell, ShellShock                 |
+| **Other**           | SSRF, XXE, SSTI, Open redirect, Prototype pollution |
 
 Complete rule list: [configs/rules.yaml](configs/rules.yaml)
 
@@ -131,6 +137,7 @@ See [TESTING.md](TESTING.md) for comprehensive test scenarios.
 ![Dashboard Overview](screenshots/dashboard-overview.png)
 
 Real-time monitoring interface featuring:
+
 - Live request logs with color-coded status
 - Traffic rate visualization
 - Response status distribution charts
@@ -148,6 +155,7 @@ Real-time monitoring interface featuring:
 ## Production Deployment
 
 **Docker:**
+
 ```dockerfile
 FROM golang:1.21-alpine AS builder
 WORKDIR /app
@@ -161,6 +169,7 @@ CMD ["yxorp"]
 ```
 
 **Systemd:**
+
 ```ini
 [Unit]
 Description=Yxorp WAF
@@ -211,11 +220,14 @@ MIT License - See [LICENSE](LICENSE)
 **Built for production environments requiring enterprise-grade security and observability.**
 
 # Update configuration
+
 nano configs/rules.yaml
 
 # Run the WAF
+
 go run cmd/waf/main.go
-```
+
+````
 
 The WAF will start on:
 
@@ -262,7 +274,7 @@ security:
       location: "query_params"
 
     # 38+ more rules included...
-```
+````
 
 ---
 
