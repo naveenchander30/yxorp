@@ -24,3 +24,14 @@ func (m *Manager) Get() *Config {
 	defer m.mu.RUnlock()
 	return m.cfg
 }
+
+func (m *Manager) Update(path string, newCfg *Config) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if err := SaveConfig(path, newCfg); err != nil {
+		return err
+	}
+	m.cfg = newCfg
+	return nil
+}

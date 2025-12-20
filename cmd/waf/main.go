@@ -161,9 +161,48 @@ func main() {
 			w.Header().Set("Content-Type", "application/json")
 			engineMu.RLock()
 			defer engineMu.RUnlock()
-			// We need to expose rules from engine, but engine struct fields are private or we need a getter.
-			// Let's just return the config's rules for now as they are the source of truth.
 			json.NewEncoder(w).Encode(cfgManager.Get().Security.Rules)
+		})
+
+		http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.Method == http.MethodGet {
+				json.NewEncoder(w).Encode(cfgManager.Get())
+				return
+			}
+			if r.Method == http.MethodPost {
+				var newCfg config.Config
+				if err := json.NewDecoder(r.Body).Decode(&newCfg); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				// Validate?
+				// For now, trust the user (admin).
+
+				if err := cfgManager.Update(configPath, &newCfg); err != nil {
+					http.Error(w, "Failed to save config: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				// Force reload of components?
+				// The main loop watches the file, so it should pick up changes automatically within 10s.
+				// But we can also manually trigger updates if we exposed them.
+				// Relying on file watcher is safer but slower.
+				// Let's explicitly update the in-memory rules engine right away if rules changed.
+
+				// Re-init rules engine for immediate effect
+				newEngine, err := rules.NewEngine(newCfg.Security.Rules)
+				if err == nil {
+					engineMu.Lock()
+					currentEngine = newEngine
+					engineMu.Unlock()
+				}
+
+				json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Configuration saved. Reloading..."})
+			} else {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
 		})
 
 		// expvar registers handlers on http.DefaultServeMux

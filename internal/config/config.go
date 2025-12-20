@@ -58,3 +58,16 @@ func LoadConfig(path string) (*Config, error) {
 
 	return &cfg, nil
 }
+
+func SaveConfig(path string, cfg *Config) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	encoder := yaml.NewEncoder(f)
+	// Set default indentation to 2 spaces
+	encoder.SetIndent(2)
+	return encoder.Encode(cfg)
+}
