@@ -48,14 +48,30 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 				// Only read body if method implies a body and we have rules that might check it
 				// For simplicity, we read it if it's not GET/HEAD/DELETE/OPTIONS
 				if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
+					maxSize := cfg.MaxBodySize
+					if maxSize <= 0 {
+						maxSize = 10 * 1024 * 1024 // 10MB default
+					}
+
+					// Wrap body with MaxBytesReader
+					r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+
 					var err error
 					bodyBytes, err = io.ReadAll(r.Body)
 					if err != nil {
+						if err.Error() == "http: request body too large" {
+							logger.Warn("Request blocked: body too large", "client_ip", r.RemoteAddr)
+							http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+							return
+						}
 						logger.Error("Failed to read request body", "error", err)
 						http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 						return
 					}
 					// Restore the body for the next handler
+					// Note: NopCloser needed because MaxBytesReader closes the connection on limit hit,
+					// but here we successfully read it (or failed).
+					// If we successfully read it, we need to provide it to the next handler.
 					r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 				}
 

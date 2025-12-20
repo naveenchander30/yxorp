@@ -29,6 +29,7 @@ type SecurityConfig struct {
 	BlockUserAgents []string        `yaml:"block_user_agents"`
 	RateLimit       RateLimitConfig `yaml:"rate_limit"`
 	Rules           []SecurityRule  `yaml:"rules"`
+	MaxBodySize     int64           `yaml:"max_body_size"`
 }
 
 type RateLimitConfig struct {
