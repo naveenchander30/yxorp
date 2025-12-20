@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,6 +48,11 @@ func NewLoadBalancer(targets []string) (*LoadBalancer, error) {
 	cbTimeout := 30 * time.Second
 
 	for _, targetURL := range targets {
+		if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+			// Assume HTTPS if no scheme provided, as it's safer/more common for modern web
+			targetURL = "https://" + targetURL
+		}
+
 		target, err := url.Parse(targetURL)
 		if err != nil {
 			return nil, err
@@ -60,13 +66,13 @@ func NewLoadBalancer(targets []string) (*LoadBalancer, error) {
 			originalDirector(req)
 			req.Host = target.Host
 			req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
-			
+
 			// Forward all cookies and session headers
 			if cookie := req.Header.Get("Cookie"); cookie != "" {
 				req.Header.Set("Cookie", cookie)
 			}
 		}
-		
+
 		// ModifyResponse to check for 500 errors and trigger CB
 		proxy.ModifyResponse = func(resp *http.Response) error {
 			// This runs AFTER the request is sent to backend
@@ -124,10 +130,10 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Use a custom ResponseWriter to capture the status code
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		peer.Proxy.ServeHTTP(rw, r)
-		
+
 		// Update Circuit Breaker based on response
 		// Note: httputil.ReverseProxy handles network errors by calling ErrorHandler (logging mostly)
-		// and returning 502. We need to catch that too. 
+		// and returning 502. We need to catch that too.
 		// Ideally we wrap the ErrorHandler but for now checking status code is a good proxy.
 		if rw.statusCode >= 500 {
 			peer.CB.RecordFailure()
@@ -158,7 +164,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 func (lb *LoadBalancer) HealthCheck() {
 	// Wait 3 seconds before first check to avoid race condition on startup
 	time.Sleep(3 * time.Second)
-	
+
 	t := time.NewTicker(time.Second * 10)
 	for range t.C {
 		for _, b := range lb.backends {
@@ -177,7 +183,7 @@ func (lb *LoadBalancer) HealthCheck() {
 
 func isBackendAlive(u *url.URL) bool {
 	timeout := 2 * time.Second
-	
+
 	// Add default port if missing
 	host := u.Host
 	if u.Port() == "" {
@@ -187,7 +193,7 @@ func isBackendAlive(u *url.URL) bool {
 			host = host + ":80"
 		}
 	}
-	
+
 	conn, err := net.DialTimeout("tcp", host, timeout)
 	if err != nil {
 		return false

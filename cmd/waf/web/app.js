@@ -123,10 +123,7 @@ function updateDashboard(vars, stats, logs) {
     document.getElementById('latency').innerText = total > 0 ? (latencyTotal / total).toFixed(1) : '0';
 
     // Uptime
-    const uptimeSec = Math.floor((Date.now() - startTime) / 1000);
-    const hrs = Math.floor(uptimeSec / 3600);
-    const mins = Math.floor((uptimeSec % 3600) / 60);
-    document.getElementById('uptime').innerText = `${hrs}h ${mins}m`;
+    document.getElementById('uptime').innerText = stats.uptime || "0s";
 
     // Logs
     const tbody = document.querySelector('#logs-table tbody');
