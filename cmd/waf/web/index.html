@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yxorp WAF Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="brand">
+            <!-- SVG Logo: Shield + Y -->
+            <div class="logo-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 22S4 18 4 12V5L12 2L20 5V12C20 18 12 22 12 22Z" fill="url(#paint0_linear)"
+                        stroke="none" />
+                    <path d="M9 8L12 12M15 8L12 12M12 12V16" stroke="white" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="paint0_linear" x1="12" y1="2" x2="12" y2="22"
+                            gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#3B82F6" />
+                            <stop offset="1" stop-color="#1D4ED8" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <span>YXORP</span>
+            <span class="badge badge-warning" style="font-size:0.6rem; margin-left:auto">PRO</span>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active" onclick="switchTab('dashboard')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h18v18H3zM3 9h18M9 21V9" />
+                </svg>
+                Dashboard
+            </li>
+            <li class="nav-item" onclick="switchTab('rules')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+                Rules Engine
+            </li>
+            <li class="nav-item" onclick="switchTab('settings')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                Settings
+            </li>
+        </ul>
+
+        <div style="margin-top:auto; font-size:0.7rem; color: #52525b;">
+            CTX: <span id="ctx-status">CONNECTED</span><br>
+            VER: 1.2.0-beta
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <header class="header">
+            <h1 class="page-title" id="page-title">Overview</h1>
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="fetchData()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view active">
+            <div class="dashboard-grid">
+                <!-- Metrics -->
+                <div class="card stat-card">
+                    <div class="card-header">
+                        <span class="card-title">REQ / SEC</span>
+                        <svg class="icon-pulse" width="16" height="16" stroke="var(--primary)" fill="none"
+                            viewBox="0 0 24 24" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                    </div>
+                    <div class="card-value" id="rps">0</div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-header">
+                        <span class="card-title">TOTAL BLOCKED</span>
+                    </div>
+                    <div class="card-value text-danger" id="blocked-count">0</div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-header">
+                        <span class="card-title">AVG LATENCY</span>
+                    </div>
+                    <div class="card-value"><span id="latency">0</span><span class="unit">ms</span></div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-header">
+                        <span class="card-title">UPTIME</span>
+                    </div>
+                    <div class="card-value" style="font-size:1.2rem" id="uptime">0h 0m</div>
+                </div>
+
+                <!-- Charts -->
+                <div class="card card-wide">
+                    <div class="card-header">
+                        <span class="card-title">TRAFFIC ANOMALY DETECTION</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <div class="card card-full">
+                    <div class="card-header">
+                        <span class="card-title">LIVE EVENT STREAM</span>
+                    </div>
+                    <div class="table-container">
+                        <table id="logs-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>METHOD</th>
+                                    <th>PATH</th>
+                                    <th>SOURCE IP</th>
+                                    <th>STATUS</th>
+                                    <th>ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RULES VIEW -->
+        <div id="view-rules" class="view">
+            <div class="card card-full">
+                <div class="card-header"
+                    style="border-bottom: 1px solid var(--border); padding-bottom:1rem; margin-bottom:1rem;">
+                    <div>
+                        <span class="card-title" style="font-size:1rem;">Active WAF Rules</span>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">Manage security
+                            policies applied to incoming traffic.</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="alert('Add Rule feature coming soon!')">+ New Rule</button>
+                </div>
+                <div id="rules-container" class="rules-grid">
+                    <!-- Rules injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div id="view-settings" class="view">
+            <div class="settings-layout">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Server Configuration</span>
+                    </div>
+                    <form id="config-form" onsubmit="saveConfig(event)">
+                        <div class="form-group">
+                            <label>Listening Port</label>
+                            <input type="text" id="cfg-port" name="port" class="form-input" placeholder=":8080">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Upstream Targets (comma separated)</label>
+                            <input type="text" id="cfg-targets" name="targets" class="form-input"
+                                placeholder="http://localhost:3000">
+                            <div class="form-hint">Requests will be load balanced between these targets.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Rate Limit (Req/Min)</label>
+                            <input type="number" id="cfg-ratelimit" name="ratelimit" class="form-input"
+                                placeholder="1000">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Max Body Size (Bytes)</label>
+                            <input type="number" id="cfg-maxbody" name="maxbody" class="form-input"
+                                placeholder="10485760">
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:2rem;">
+                            <button type="button" class="btn btn-secondary" onclick="loadConfig()">Reset</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
