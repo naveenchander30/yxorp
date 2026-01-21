@@ -31,7 +31,7 @@ security:
     requests_per_minute: 100
   rules:
     - name: "SQL Injection Prevention"
-      pattern: "(UNION SELECT|DROP TABLE|' OR 1=1|' OR '1'='1|INSERT INTO|DELETE FROM|UPDATE .*? SET|EXEC |xp_cmdshell|SELECT.*?FROM|HAVING|GROUP BY|ORDER BY.*?--)"
+      pattern: "(?i)(UNION\\s+SELECT|DROP\\s+TABLE|'\\s+OR\\s+1=1|'\\s+OR\\s+'1'='1|INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+.*?\\s+SET|EXEC\\s+|xp_cmdshell|SELECT.*?\\s+FROM|HAVING|GROUP\\s+BY|ORDER\\s+BY.*?--)"
       location: "header"
 
     - name: "XSS Prevention"
