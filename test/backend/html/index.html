@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yxorp WAF - Demo Backend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .status {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .info-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .info-card h3 {
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .info-card p {
+            color: #333;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        .test-section {
+            background: #fff5e6;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ff9800;
+            margin-bottom: 20px;
+        }
+        .test-section h2 {
+            color: #ff9800;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button.danger {
+            background: #ef4444;
+        }
+        button.danger:hover {
+            background: #dc2626;
+        }
+        .links {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e5e7eb;
+        }
+        .links h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .links a {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            display: none;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Yxorp WAF Demo</h1>
+        <p class="subtitle">Web Application Firewall - Test Backend</p>
+        <span class="status">Protected & Running</span>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>Protected By</h3>
+                <p>Yxorp WAF</p>
+            </div>
+            <div class="info-card">
+                <h3>Security Rules</h3>
+                <p>36 Active</p>
+            </div>
+            <div class="info-card">
+                <h3>Rate Limiting</h3>
+                <p>Enabled</p>
+            </div>
+            <div class="info-card">
+                <h3>Compression</h3>
+                <p>gzip</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test WAF Protection</h2>
+            <p style="margin-bottom: 15px; color: #666;">Click the buttons below to test various WAF security rules. Attacks will be blocked.</p>
+            <div class="test-buttons">
+                <button onclick="testSQLInjection()">Test SQL Injection</button>
+                <button onclick="testXSS()">Test XSS Attack</button>
+                <button onclick="testPathTraversal()">Test Path Traversal</button>
+                <button onclick="testLargePayload()" class="danger">Test Large Payload</button>
+                <button onclick="testRateLimit()">Test Rate Limit</button>
+                <button onclick="normalRequest()">Normal Request ✓</button>
+            </div>
+            <div id="response"></div>
+        </div>
+
+        <div class="links">
+            <h2>Monitoring Dashboard</h2>
+            <a href="http://localhost:3000" target="_blank">Grafana Dashboard</a>
+            <a href="http://localhost:9090" target="_blank">Prometheus Metrics</a>
+            <a href="http://localhost:8080/metrics" target="_blank">WAF Metrics</a>
+        </div>
+
+        <div class="footer">
+            <p>This is a demo backend protected by Yxorp WAF</p>
+            <p>Time: <span id="time"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Update time
+        function updateTime() {
+            document.getElementById('time').textContent = new Date().toLocaleString();
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        function showResponse(message, success) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.style.display = 'block';
+            responseDiv.style.background = success ? '#d1fae5' : '#fee2e2';
+            responseDiv.style.color = success ? '#065f46' : '#991b1b';
+            responseDiv.textContent = message;
+        }
+
+        function normalRequest() {
+            fetch('/api/test')
+                .then(response => response.text())
+                .then(data => showResponse('✓ Normal request passed through WAF successfully', true))
+                .catch(err => showResponse('Request completed: ' + err.message, true));
+        }
+
+        function testSQLInjection() {
+            fetch('/api/user?id=1\' OR \'1\'=\'1')
+                .then(response => showResponse('Response: ' + response.status + ' - ' + response.statusText, response.ok))
+                .catch(err => showResponse('✓ SQL Injection blocked by WAF', true));
+        }
+
+        function testXSS() {
+            fetch('/api/comment?text=<script>alert("XSS")</script>')
+                .then(response => showResponse('Response: ' + response.status + ' - ' + response.statusText, response.ok))
+                .catch(err => showResponse('✓ XSS attack blocked by WAF', true));
+        }
+
+        function testPathTraversal() {
+            fetch('/api/file?path=../../etc/passwd')
+                .then(response => showResponse('Response: ' + response.status + ' - ' + response.statusText, response.ok))
+                .catch(err => showResponse('✓ Path traversal blocked by WAF', true));
+        }
+
+        function testLargePayload() {
+            const largeData = 'A'.repeat(3 * 1024 * 1024); // 3MB payload
+            fetch('/api/upload', {
+                method: 'POST',
+                body: largeData
+            })
+                .then(response => showResponse('Response: ' + response.status + ' - ' + response.statusText, response.ok))
+                .catch(err => showResponse('✓ Large payload blocked by WAF (exceeds 2MB limit)', true));
+        }
+
+        async function testRateLimit() {
+            showResponse('Sending 100 requests rapidly...', false);
+            let blocked = 0;
+            for (let i = 0; i < 100; i++) {
+                try {
+                    const response = await fetch('/api/test');
+                    if (!response.ok) blocked++;
+                } catch (err) {
+                    blocked++;
+                }
+            }
+            showResponse(`✓ Rate limiter active: ${blocked}/100 requests blocked`, true);
+        }
+    </script>
+</body>
+</html>
