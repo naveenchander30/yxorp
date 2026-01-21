@@ -22,6 +22,7 @@ type RateLimiter struct {
 	rate            float64 // tokens per second
 	burst           float64 // max tokens
 	cleanupInterval time.Duration
+	enabled         bool
 }
 
 func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
@@ -36,6 +37,7 @@ func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
 		rate:            rate,
 		burst:           float64(cfg.RequestsPerMinute), // Burst size = 1 minute worth of requests
 		cleanupInterval: 10 * time.Minute,
+		enabled:         cfg.Enabled,
 	}
 
 	// Background cleanup routine
@@ -87,6 +89,11 @@ func (rl *RateLimiter) getClientIP(r *http.Request) string {
 
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !rl.enabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		ip := rl.getClientIP(r)
 
 		rl.mu.Lock()

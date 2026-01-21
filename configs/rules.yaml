@@ -32,23 +32,23 @@ security:
   rules:
     - name: "SQL Injection Prevention"
       pattern: "(UNION SELECT|DROP TABLE|' OR 1=1|' OR '1'='1|INSERT INTO|DELETE FROM|UPDATE .* SET|EXEC |xp_cmdshell|SELECT.*FROM|HAVING|GROUP BY|ORDER BY.*--)"
-      location: "query_params"
+      location: "header"
 
     - name: "XSS Prevention"
       pattern: "(<script|<iframe|<object|<embed|onerror=|onload=|javascript:|<img.*onerror|<svg.*onload|alert\\(|document\\.cookie|window\\.location)"
-      location: "query_params"
+      location: "header"
 
     - name: "Path Traversal Prevention"
       pattern: "(\\.\\.[\\/]|\\.\\.\\\\|%2e%2e%2f|%2e%2e/|%2e%2e\\\\|/etc/passwd|/etc/shadow|C:\\\\Windows)"
-      location: "path"
+      location: "uri"
 
     - name: "Command Injection Prevention"
       pattern: "(;.*cat |;.*ls |\\|.*whoami|\\|.*pwd|`.*`|\\$\\(.*\\)|&&.*rm |;.*wget |;.*curl )"
-      location: "query_params"
+      location: "header"
 
     - name: "LDAP Injection Prevention"
       pattern: "(\\*\\)\\(uid=\\*|\\*\\)\\(|\\)\\(\\||admin\\*\\)\\(\\||\\*\\)\\(cn=)"
-      location: "query_params"
+      location: "header"
 
     - name: "XXE Prevention"
       pattern: "(<!ENTITY|<!DOCTYPE.*\\[|SYSTEM \"file://|SYSTEM 'file://|PUBLIC.*SYSTEM)"
@@ -56,7 +56,7 @@ security:
 
     - name: "NoSQL Injection Prevention"
       pattern: "(\\$ne|\\$gt|\\$lt|\\$where|\\$regex|\\$in\\[|\\[\\$ne\\]|\\[\\$gt\\])"
-      location: "query_params"
+      location: "header"
 
     - name: "Remote Code Execution Prevention"
       pattern: "(eval\\(|exec\\(|system\\(|shell_exec|passthru|base64_decode\\(|assert\\(|preg_replace.*\\/e)"
@@ -64,23 +64,23 @@ security:
 
     - name: "Server-Side Template Injection"
       pattern: "(\\{\\{.*\\}\\}|\\{%.*%\\}|\\$\\{.*\\}|<%.*%>|#\\{.*\\})"
-      location: "query_params"
+      location: "header"
 
     - name: "File Upload Attacks"
       pattern: "(\\.php|\\.jsp|\\.asp|\\.aspx|\\.exe|\\.sh|\\.bat|\\.cmd|\\.ps1)"
-      location: "path"
+      location: "uri"
 
     - name: "Header Injection"
       pattern: "(\\r\\n|%0d%0a|\\\\r\\\\n|Set-Cookie:|Location:)"
-      location: "query_params"
+      location: "header"
 
     - name: "Open Redirect"
       pattern: "(https?://|//|javascript:|data:|vbscript:)"
-      location: "query_params"
+      location: "header"
 
     - name: "SSRF Prevention"
       pattern: "(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::\\]|file://|dict://|gopher://)"
-      location: "query_params"
+      location: "header"
 
     - name: "Prototype Pollution"
       pattern: "(__proto__|constructor\\[prototype\\]|prototype\\.)"
@@ -88,7 +88,7 @@ security:
 
     - name: "JWT Attacks"
       pattern: "(eyJ.*\\.eyJ.*\\.|\"alg\":\"none\"|\"typ\":\"JWT\")"
-      location: "query_params"
+      location: "header"
 
     - name: "Credential Stuffing Keywords"
       pattern: "(password=.*&password=|admin.*123456|root.*password|test.*test)"
@@ -96,7 +96,7 @@ security:
 
     - name: "Information Disclosure"
       pattern: "(\\.git/|\\.env|\\.aws/|web\\.config|\\.htaccess|wp-config\\.php|database\\.yml)"
-      location: "path"
+      location: "uri"
 
     - name: "Deserialization Attacks"
       pattern: "(rO0|YToxOnt|O:[0-9]+:|unserialize\\(|pickle\\.loads)"
@@ -108,19 +108,19 @@ security:
 
     - name: "Log Injection"
       pattern: "(%0a|\\\\n|\\r\\n.*INFO|\\r\\n.*ERROR|\\r\\n.*DEBUG)"
-      location: "query_params"
+      location: "header"
 
     - name: "CRLF Injection"
       pattern: "(%0d%0a|\\r\\n|%0a|%0d|\\\\r\\\\n)"
-      location: "query_params"
+      location: "header"
 
     - name: "OGNL Injection"
       pattern: "(@java\\.lang|#context|#_memberAccess|#application|#session|struts\\.)"
-      location: "query_params"
+      location: "header"
 
     - name: "Expression Language Injection"
       pattern: "(\\$\\{.*applicationScope|\\$\\{.*sessionScope|\\$\\{.*requestScope|\\$\\{.*pageContext)"
-      location: "query_params"
+      location: "header"
 
     - name: "GraphQL Injection"
       pattern: "(query.*\\{.*__schema|mutation.*\\{.*introspection|__type\\(|__typename)"
@@ -128,23 +128,23 @@ security:
 
     - name: "DNS Rebinding"
       pattern: "(0x7f\\.0x0\\.0x0\\.0x1|0177\\.0\\.0\\.01|2130706433|017700000001)"
-      location: "query_params"
+      location: "header"
 
     - name: "Unicode Attacks"
       pattern: "(%u|\\\\u00|%c0%ae|%e0%80%ae)"
-      location: "path"
+      location: "uri"
 
     - name: "Double Encoding"
       pattern: "(%25[0-9a-f]{2}|%252e|%255c)"
-      location: "path"
+      location: "uri"
 
     - name: "Null Byte Injection"
       pattern: "(%00|\\\\x00|\\\\0)"
-      location: "path"
+      location: "uri"
 
     - name: "Format String Attack"
       pattern: "(%n|%s|%x|%d|%p|%hn)"
-      location: "query_params"
+      location: "header"
 
     - name: "SMTP Injection"
       pattern: "(bcc:|cc:|to:|from:|subject:|content-type:|mime-version:)"
@@ -152,11 +152,11 @@ security:
 
     - name: "CSS Injection"
       pattern: "(expression\\(|@import|javascript:|behaviour:|binding:|moz-binding:)"
-      location: "query_params"
+      location: "header"
 
     - name: "Buffer Overflow Attempts"
       pattern: "(A{100,}|0x[0-9a-f]{100,}|\\\\x[0-9a-f]{100,})"
-      location: "query_params"
+      location: "header"
 
     - name: "PHP Object Injection"
       pattern: "(O:[0-9]+:\"|a:[0-9]+:\\{|s:[0-9]+:\"|C:[0-9]+:)"
@@ -164,23 +164,23 @@ security:
 
     - name: "Spring4Shell"
       pattern: "(class\\.module\\.classLoader|class\\.classLoader\\.resources)"
-      location: "query_params"
+      location: "header"
 
     - name: "Log4Shell"
       pattern: "(\\$\\{jndi:|\\$\\{ldap:|\\$\\{rmi:|\\$\\{dns:)"
-      location: "query_params"
+      location: "header"
 
     - name: "Shell Shock"
       pattern: "(\\(\\) \\{|\\} ;|\\{\\} ;)"
-      location: "query_params"
+      location: "header"
 
     - name: "XPATH Injection"
       pattern: "(' or 1=1 or ''='|\\] \\| /|//*\\[|substring\\(|string-length\\()"
-      location: "query_params"
+      location: "header"
 
     - name: "Race Condition Exploitation"
       pattern: "(\\?debug=1|\\?test=1|X-Debug-Token|X-Forwarded-For:.*127\\.0\\.0\\.1)"
-      location: "query_params"
+      location: "header"
 
     - name: "Mass Assignment"
       pattern: "(is_admin=|role=admin|privileges=|user_type=admin)"

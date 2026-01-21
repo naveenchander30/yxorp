@@ -2,9 +2,14 @@ package config
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	mutex = &sync.RWMutex{}
 )
 
 type Config struct {
@@ -44,6 +49,8 @@ type SecurityRule struct {
 }
 
 func LoadConfig(path string) (*Config, error) {
+	mutex.RLock()
+	defer mutex.RUnlock()
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -60,6 +67,8 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 func SaveConfig(path string, cfg *Config) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	f, err := os.Create(path)
 	if err != nil {
 		return err

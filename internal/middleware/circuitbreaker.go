@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yxorp/internal/common"
 	"github.com/yxorp/pkg/logger"
 )
 
@@ -88,10 +89,10 @@ func (cb *CircuitBreaker) Middleware(next http.Handler) http.Handler {
 		}
 
 		// Capture status code
-		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		rw := common.NewResponseWriter(w)
 		next.ServeHTTP(rw, r)
 
-		if rw.statusCode >= 500 {
+		if rw.StatusCode >= 500 {
 			cb.RecordFailure()
 		} else {
 			cb.RecordSuccess()

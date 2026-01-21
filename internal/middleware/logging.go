@@ -4,31 +4,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/yxorp/internal/common"
 	"github.com/yxorp/internal/stats"
 	"github.com/yxorp/pkg/logger"
 )
-
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
 
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		rw := common.NewResponseWriter(w)
 		next.ServeHTTP(rw, r)
 
 		latency := time.Since(start)
 
 		action := "ALLOWED"
-		if rw.statusCode == http.StatusForbidden || rw.statusCode == http.StatusTooManyRequests {
+		if rw.StatusCode == http.StatusForbidden || rw.StatusCode == http.StatusTooManyRequests {
 			action = "BLOCKED"
 		}
 
@@ -36,7 +27,7 @@ func RequestLogger(next http.Handler) http.Handler {
 			"client_ip", r.RemoteAddr,
 			"method", r.Method,
 			"path", r.URL.Path,
-			"status_code", rw.statusCode,
+			"status_code", rw.StatusCode,
 			"latency", latency.String(),
 			"action", action,
 		)
@@ -47,7 +38,7 @@ func RequestLogger(next http.Handler) http.Handler {
 			ClientIP:   r.RemoteAddr,
 			Method:     r.Method,
 			Path:       r.URL.Path,
-			StatusCode: rw.statusCode,
+			StatusCode: rw.StatusCode,
 			Latency:    latency.String(),
 			Action:     action,
 		})

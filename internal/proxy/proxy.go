@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/yxorp/internal/common"
 	"github.com/yxorp/internal/middleware"
 	"github.com/yxorp/pkg/logger"
 )
@@ -128,14 +129,14 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	peer := lb.GetNextPeer()
 	if peer != nil {
 		// Use a custom ResponseWriter to capture the status code
-		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		rw := common.NewResponseWriter(w)
 		peer.Proxy.ServeHTTP(rw, r)
 
 		// Update Circuit Breaker based on response
 		// Note: httputil.ReverseProxy handles network errors by calling ErrorHandler (logging mostly)
 		// and returning 502. We need to catch that too.
 		// Ideally we wrap the ErrorHandler but for now checking status code is a good proxy.
-		if rw.statusCode >= 500 {
+		if rw.StatusCode >= 500 {
 			peer.CB.RecordFailure()
 		} else {
 			peer.CB.RecordSuccess()
@@ -148,17 +149,6 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Backend status", "url", b.URL.String(), "alive", b.IsAlive())
 	}
 	http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
-}
-
-// Simple wrapper to capture status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
 }
 
 func (lb *LoadBalancer) HealthCheck() {

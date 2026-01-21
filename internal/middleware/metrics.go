@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/yxorp/internal/common"
 )
 
 var (
@@ -20,15 +22,15 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 
 		// Wrap response writer to capture status code
-		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		rw := common.NewResponseWriter(w)
 		next.ServeHTTP(rw, r)
 
 		// Update metrics
 		totalRequests.Add(1)
 		totalLatency.Add(int64(time.Since(start).Milliseconds()))
-		statusCodes.Add(strconv.Itoa(rw.statusCode), 1)
+		statusCodes.Add(strconv.Itoa(rw.StatusCode), 1)
 
-		if rw.statusCode == http.StatusForbidden || rw.statusCode == http.StatusTooManyRequests {
+		if rw.StatusCode == http.StatusForbidden || rw.StatusCode == http.StatusTooManyRequests {
 			blockedRequests.Add(1)
 		}
 	})
