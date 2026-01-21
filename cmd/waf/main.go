@@ -42,7 +42,7 @@ func main() {
 	cfgManager := config.NewManager(cfg)
 
 	// 3. Initialize Load Balancer
-	rp, err := proxy.NewLoadBalancer(cfg.Proxy.Targets)
+	rp, err := proxy.NewLoadBalancer(cfg.Proxy.Targets, cfg.Proxy.MaxRequestSize)
 	if err != nil {
 		logger.Error("Failed to initialize load balancer", "error", err)
 		os.Exit(1)

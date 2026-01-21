@@ -28,14 +28,16 @@ type ServerConfig struct {
 }
 
 type ProxyConfig struct {
-	Targets []string `yaml:"targets"`
+	Targets        []string `yaml:"targets"`
+	MaxRequestSize int64    `yaml:"max_request_size"` // Maximum request size in bytes (0 = unlimited)
 }
 
 type SecurityConfig struct {
-	BlockUserAgents []string        `yaml:"block_user_agents"`
-	RateLimit       RateLimitConfig `yaml:"rate_limit"`
-	Rules           []SecurityRule  `yaml:"rules"`
-	MaxBodySize     int64           `yaml:"max_body_size"`
+	BlockUserAgents     []string        `yaml:"block_user_agents"`
+	RateLimit           RateLimitConfig `yaml:"rate_limit"`
+	Rules               []SecurityRule  `yaml:"rules"`
+	MaxBodySize         int64           `yaml:"max_body_size"`
+	MaxDecompressedSize int64           `yaml:"max_decompressed_size"`
 }
 
 type RateLimitConfig struct {

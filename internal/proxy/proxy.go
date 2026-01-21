@@ -36,11 +36,12 @@ func (b *Backend) IsAlive() bool {
 }
 
 type LoadBalancer struct {
-	backends []*Backend
-	current  uint64
+	backends       []*Backend
+	current        uint64
+	maxRequestSize int64
 }
 
-func NewLoadBalancer(targets []string) (*LoadBalancer, error) {
+func NewLoadBalancer(targets []string, maxRequestSize int64) (*LoadBalancer, error) {
 	var backends []*Backend
 
 	// Default CB settings: 5 failures, 30s timeout
@@ -97,7 +98,8 @@ func NewLoadBalancer(targets []string) (*LoadBalancer, error) {
 	}
 
 	lb := &LoadBalancer{
-		backends: backends,
+		backends:       backends,
+		maxRequestSize: maxRequestSize,
 	}
 
 	// Start health check
@@ -126,6 +128,18 @@ func (lb *LoadBalancer) GetNextPeer() *Backend {
 }
 
 func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Apply request size limit if configured
+	if lb.maxRequestSize > 0 && r.ContentLength > lb.maxRequestSize {
+		logger.Warn("Request body too large", "content_length", r.ContentLength, "max_size", lb.maxRequestSize, "client_ip", r.RemoteAddr)
+		http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	// Wrap the body with MaxBytesReader to enforce the limit even if Content-Length is missing
+	if lb.maxRequestSize > 0 && r.Body != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, lb.maxRequestSize)
+	}
+
 	peer := lb.GetNextPeer()
 	if peer != nil {
 		// Use a custom ResponseWriter to capture the status code

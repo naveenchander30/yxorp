@@ -12,8 +12,6 @@ import (
 	"github.com/yxorp/pkg/logger"
 )
 
-const maxDecompressedSize = 10 * 1024 * 1024 // 10MB limit
-
 func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter func() *rules.Engine) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -22,8 +20,13 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 
 			// 0. Gzip Bomb Protection
 			if r.Header.Get("Content-Encoding") == "gzip" {
+				maxDecompSize := cfg.MaxDecompressedSize
+				if maxDecompSize <= 0 {
+					maxDecompSize = 10 * 1024 * 1024 // 10MB default
+				}
+
 				// Limit the size of the compressed body to avoid decompression bombs
-				r.Body = http.MaxBytesReader(w, r.Body, maxDecompressedSize)
+				r.Body = http.MaxBytesReader(w, r.Body, maxDecompSize)
 
 				gr, err := gzip.NewReader(r.Body)
 				if err != nil {
@@ -35,7 +38,7 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 
 				// Read the decompressed body, but limit its size
 				var decompressedBody bytes.Buffer
-				_, err = io.CopyN(&decompressedBody, gr, maxDecompressedSize+1)
+				_, err = io.CopyN(&decompressedBody, gr, maxDecompSize+1)
 				if err != nil && err != io.EOF {
 					logger.Warn("Failed to decompress request body", "error", err)
 					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
