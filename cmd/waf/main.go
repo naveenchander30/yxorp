@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/yxorp/internal/config"
+	"github.com/yxorp/internal/metrics"
 	"github.com/yxorp/internal/middleware"
 	"github.com/yxorp/internal/proxy"
 	"github.com/yxorp/internal/rules"
@@ -30,7 +31,11 @@ func main() {
 	logger.Init()
 	logger.Info("Starting Yxorp WAF...")
 
-	// 2. Load Configuration
+	// 2. Initialize Prometheus metrics
+	metrics.Init()
+	logger.Info("Prometheus metrics initialized")
+
+	// 3. Load Configuration
 	configPath := "configs/rules.yaml"
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
@@ -41,14 +46,14 @@ func main() {
 	// Initialize Config Manager
 	cfgManager := config.NewManager(cfg)
 
-	// 3. Initialize Load Balancer
+	// 4. Initialize Load Balancer
 	rp, err := proxy.NewLoadBalancer(cfg.Proxy.Targets, cfg.Proxy.MaxRequestSize)
 	if err != nil {
 		logger.Error("Failed to initialize load balancer", "error", err)
 		os.Exit(1)
 	}
 
-	// 4. Initialize Security Rules Engine
+	// 5. Initialize Security Rules Engine
 	ruleEngine, err := rules.NewEngine(cfg.Security.Rules)
 	if err != nil {
 		logger.Error("Failed to initialize security rules engine", "error", err)
@@ -73,12 +78,14 @@ func main() {
 				newCfg, err := config.LoadConfig(configPath)
 				if err != nil {
 					logger.Error("Failed to reload config", "error", err)
+					metrics.RecordConfigReloadFailure()
 					continue
 				}
 
 				newEngine, err := rules.NewEngine(newCfg.Security.Rules)
 				if err != nil {
 					logger.Error("Failed to reload rules", "error", err)
+					metrics.RecordConfigReloadFailure()
 					continue
 				}
 
@@ -88,6 +95,7 @@ func main() {
 				currentEngine = newEngine
 				engineMu.Unlock()
 
+				metrics.RecordConfigReload()
 				logger.Info("Configuration reloaded successfully")
 			}
 			lastMod = info.ModTime()
@@ -97,7 +105,7 @@ func main() {
 	// 5. Initialize Rate Limiter
 	rateLimiter := middleware.NewRateLimiter(cfg.Security.RateLimit)
 
-	// 7. Setup Middleware Chain
+	// 6. Setup Middleware Chain
 	// Request Flow: Client -> [Rate Limiter] -> [Security Rules Engine] -> [Request Logger] -> [Circuit Breaker] -> [Reverse Proxy] -> Target Server
 
 	// We build the chain from outer to inner.
@@ -131,7 +139,7 @@ func main() {
 		middleware.RequestLogger,
 	)
 
-	// 8. Start Server
+	// 7. Start Server
 	srv := server.NewServer(cfg.Server, finalHandler)
 
 	// Start Metrics Server (separate port)
@@ -145,6 +153,9 @@ func main() {
 		} else {
 			http.Handle("/", http.FileServer(http.FS(webFS)))
 		}
+
+		// Prometheus metrics endpoint
+		http.Handle("/metrics", metrics.Handler())
 
 		// API Endpoints
 		http.HandleFunc("/api/logs", func(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +208,9 @@ func main() {
 					engineMu.Lock()
 					currentEngine = newEngine
 					engineMu.Unlock()
+					metrics.RecordConfigReload()
+				} else {
+					metrics.RecordConfigReloadFailure()
 				}
 
 				json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Configuration saved. Reloading..."})

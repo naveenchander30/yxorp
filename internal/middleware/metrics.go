@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/yxorp/internal/common"
+	"github.com/yxorp/internal/metrics"
 )
 
 var (
@@ -25,13 +26,19 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 		rw := common.NewResponseWriter(w)
 		next.ServeHTTP(rw, r)
 
-		// Update metrics
+		duration := time.Since(start)
+		status := strconv.Itoa(rw.StatusCode)
+
+		// Update expvar metrics (for backward compatibility)
 		totalRequests.Add(1)
-		totalLatency.Add(int64(time.Since(start).Milliseconds()))
-		statusCodes.Add(strconv.Itoa(rw.StatusCode), 1)
+		totalLatency.Add(int64(duration.Milliseconds()))
+		statusCodes.Add(status, 1)
 
 		if rw.StatusCode == http.StatusForbidden || rw.StatusCode == http.StatusTooManyRequests {
 			blockedRequests.Add(1)
 		}
+
+		// Update Prometheus metrics
+		metrics.RecordHTTPRequest(r.Method, r.URL.Path, status, duration)
 	})
 }
