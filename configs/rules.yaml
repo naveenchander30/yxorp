@@ -31,11 +31,11 @@ security:
     requests_per_minute: 100
   rules:
     - name: "SQL Injection Prevention"
-      pattern: "(UNION SELECT|DROP TABLE|' OR 1=1|' OR '1'='1|INSERT INTO|DELETE FROM|UPDATE .* SET|EXEC |xp_cmdshell|SELECT.*FROM|HAVING|GROUP BY|ORDER BY.*--)"
+      pattern: "(UNION SELECT|DROP TABLE|' OR 1=1|' OR '1'='1|INSERT INTO|DELETE FROM|UPDATE .*? SET|EXEC |xp_cmdshell|SELECT.*?FROM|HAVING|GROUP BY|ORDER BY.*?--)"
       location: "header"
 
     - name: "XSS Prevention"
-      pattern: "(<script|<iframe|<object|<embed|onerror=|onload=|javascript:|<img.*onerror|<svg.*onload|alert\\(|document\\.cookie|window\\.location)"
+      pattern: "(<script|<iframe|<object|<embed|onerror=|onload=|javascript:|<img.*?onerror|<svg.*?onload|alert\\(|document\\.cookie|window\\.location)"
       location: "header"
 
     - name: "Path Traversal Prevention"
@@ -43,7 +43,7 @@ security:
       location: "uri"
 
     - name: "Command Injection Prevention"
-      pattern: "(;.*cat |;.*ls |\\|.*whoami|\\|.*pwd|`.*`|\\$\\(.*\\)|&&.*rm |;.*wget |;.*curl )"
+      pattern: "(;.*?cat |;.*?ls |\\|.*?whoami|\\|.*?pwd|`.*?`|\\$\\(.*?\\)|&&.*?rm |;.*?wget |;.*?curl )"
       location: "header"
 
     - name: "LDAP Injection Prevention"
@@ -51,7 +51,7 @@ security:
       location: "header"
 
     - name: "XXE Prevention"
-      pattern: "(<!ENTITY|<!DOCTYPE.*\\[|SYSTEM \"file://|SYSTEM 'file://|PUBLIC.*SYSTEM)"
+      pattern: "(<!ENTITY|<!DOCTYPE.*?\\[|SYSTEM \"file://|SYSTEM 'file://|PUBLIC.*?SYSTEM)"
       location: "body"
 
     - name: "NoSQL Injection Prevention"
@@ -59,11 +59,11 @@ security:
       location: "header"
 
     - name: "Remote Code Execution Prevention"
-      pattern: "(eval\\(|exec\\(|system\\(|shell_exec|passthru|base64_decode\\(|assert\\(|preg_replace.*\\/e)"
+      pattern: "(eval\\(|exec\\(|system\\(|shell_exec|passthru|base64_decode\\(|assert\\(|preg_replace.*?\\/e)"
       location: "body"
 
     - name: "Server-Side Template Injection"
-      pattern: "(\\{\\{.*\\}\\}|\\{%.*%\\}|\\$\\{.*\\}|<%.*%>|#\\{.*\\})"
+      pattern: "(\\{\\{.*?\\}\\}|\\{%.*?%\\}|\\$\\{.*?\\}|<%.*?%>|#\\{.*?\\})"
       location: "header"
 
     - name: "File Upload Attacks"
@@ -87,11 +87,11 @@ security:
       location: "body"
 
     - name: "JWT Attacks"
-      pattern: "(eyJ.*\\.eyJ.*\\.|\"alg\":\"none\"|\"typ\":\"JWT\")"
+      pattern: "(eyJ.*?\\.eyJ.*?\\.|\"alg\":\"none\"|\"typ\":\"JWT\")"
       location: "header"
 
     - name: "Credential Stuffing Keywords"
-      pattern: "(password=.*&password=|admin.*123456|root.*password|test.*test)"
+      pattern: "(password=.*?&password=|admin.*?123456|root.*?password|test.*?test)"
       location: "body"
 
     - name: "Information Disclosure"
@@ -107,7 +107,7 @@ security:
       location: "body"
 
     - name: "Log Injection"
-      pattern: "(%0a|\\\\n|\\r\\n.*INFO|\\r\\n.*ERROR|\\r\\n.*DEBUG)"
+      pattern: "(%0a|\\\\n|\\r\\n.*?INFO|\\r\\n.*?ERROR|\\r\\n.*?DEBUG)"
       location: "header"
 
     - name: "CRLF Injection"
@@ -119,11 +119,11 @@ security:
       location: "header"
 
     - name: "Expression Language Injection"
-      pattern: "(\\$\\{.*applicationScope|\\$\\{.*sessionScope|\\$\\{.*requestScope|\\$\\{.*pageContext)"
+      pattern: "(\\$\\{.*?applicationScope|\\$\\{.*?sessionScope|\\$\\{.*?requestScope|\\$\\{.*?pageContext)"
       location: "header"
 
     - name: "GraphQL Injection"
-      pattern: "(query.*\\{.*__schema|mutation.*\\{.*introspection|__type\\(|__typename)"
+      pattern: "(query.*?\\{.*?__schema|mutation.*?\\{.*?introspection|__type\\(|__typename)"
       location: "body"
 
     - name: "DNS Rebinding"
@@ -179,7 +179,7 @@ security:
       location: "header"
 
     - name: "Race Condition Exploitation"
-      pattern: "(\\?debug=1|\\?test=1|X-Debug-Token|X-Forwarded-For:.*127\\.0\\.0\\.1)"
+      pattern: "(\\?debug=1|\\?test=1|X-Debug-Token|X-Forwarded-For:.*?127\\.0\\.0\\.1)"
       location: "header"
 
     - name: "Mass Assignment"
