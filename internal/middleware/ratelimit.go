@@ -68,14 +68,14 @@ func (rl *RateLimiter) getClientIP(r *http.Request) string {
 		// XFF can contain multiple IPs, the first one is the client
 		ips := strings.Split(xff, ",")
 		clientIP := strings.TrimSpace(ips[0])
-		if clientIP != "" {
+		if clientIP != "" && net.ParseIP(clientIP) != nil {
 			return clientIP
 		}
 	}
 
 	// Check X-Real-IP
 	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
+	if xri != "" && net.ParseIP(xri) != nil {
 		return xri
 	}
 
