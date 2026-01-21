@@ -1,0 +1,129 @@
+groups:
+  - name: yxorp_waf_alerts
+    interval: 30s
+    rules:
+      # High rate limit violations
+      - alert: HighRateLimitViolations
+        expr: rate(rate_limit_exceeded_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: rate_limiter
+        annotations:
+          summary: "High rate limit violations detected"
+          description: "Rate limit exceeded {{ $value }} times per second (threshold: 10/s) for the last 5 minutes"
+
+      # WAF blocking many requests
+      - alert: HighWAFBlockRate
+        expr: rate(waf_blocked_requests_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: waf
+        annotations:
+          summary: "High number of blocked requests"
+          description: "WAF is blocking {{ $value }} requests per second (threshold: 5/s)"
+
+      # Backend server down
+      - alert: BackendDown
+        expr: backend_health_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Backend server is down"
+          description: "Backend {{ $labels.backend }} has been down for 1 minute"
+
+      # Circuit breaker open
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 2m
+        labels:
+          severity: warning
+          component: circuit_breaker
+        annotations:
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker for {{ $labels.backend }} has been open for 2 minutes"
+
+      # High 5xx error rate
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m]) 
+          / 
+          rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: http
+        annotations:
+          summary: "High 5xx error rate"
+          description: "{{ $value | humanizePercentage }} of requests are returning 5xx errors (threshold: 5%)"
+
+      # High 4xx error rate
+      - alert: HighClientErrorRate
+        expr: |
+          rate(http_requests_total{status=~"4.."}[5m]) 
+          / 
+          rate(http_requests_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: http
+        annotations:
+          summary: "High 4xx error rate"
+          description: "{{ $value | humanizePercentage }} of requests are returning 4xx errors (threshold: 20%)"
+
+      # High latency
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: http
+        annotations:
+          summary: "High request latency"
+          description: "99th percentile latency is {{ $value }}s (threshold: 2s)"
+
+      # Config reload failures
+      - alert: ConfigReloadFailures
+        expr: increase(config_reload_failures_total[10m]) > 0
+        labels:
+          severity: warning
+          component: config
+        annotations:
+          summary: "Configuration reload failures"
+          description: "{{ $value }} config reload failures in the last 10 minutes"
+
+      # WAF instance down
+      - alert: YxorpWAFDown
+        expr: up{job="yxorp-waf"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: waf
+        annotations:
+          summary: "Yxorp WAF instance is down"
+          description: "WAF instance {{ $labels.instance }} has been down for 1 minute"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: memory_usage_bytes > 1.5e9
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanize }}B (threshold: 1.5GB)"
+
+      # System in degraded mode
+      - alert: SystemDegraded
+        expr: changes(config_reloads_total[5m]) == 0 and degradation_mode > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: degradation
+        annotations:
+          summary: "System is in degraded mode"
+          description: "System has been in degraded mode for 5 minutes"

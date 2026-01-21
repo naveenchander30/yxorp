@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # Yxorp WAF - Main Application
+  yxorp-waf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yxorp-waf:latest
+    container_name: yxorp-waf
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # Main HTTP traffic
+      - "8081:8081"  # Metrics & Admin API
+    environment:
+      # API key for admin endpoints (CHANGE THIS!)
+      - WAF_API_KEY=${WAF_API_KEY:-change-this-to-a-secure-random-key}
+      # Optional: Set log level
+      - LOG_LEVEL=info
+    volumes:
+      # Mount config file
+      - ./configs/rules.yaml:/app/configs/rules.yaml:Z
+      # Mount logs directory
+      - ./logs:/app/logs:Z
+      # Optional: Mount TLS certificates
+      # - ./certs:/app/certs:ro
+    networks:
+      - yxorp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/metrics"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    labels:
+      - "com.yxorp.service=waf"
+      - "com.yxorp.version=1.0.0"
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: yxorp-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - yxorp-network
+    depends_on:
+      - yxorp-waf
+    labels:
+      - "com.yxorp.service=prometheus"
+
+  # Grafana - Metrics Visualization
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: yxorp-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - yxorp-network
+    depends_on:
+      - prometheus
+    labels:
+      - "com.yxorp.service=grafana"
+
+  # Demo Backend Service (for testing)
+  demo-backend:
+    image: nginx:alpine
+    container_name: demo-backend
+    restart: unless-stopped
+    ports:
+      - "9000:80"
+    volumes:
+      - ./test/backend/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./test/backend/html:/usr/share/nginx/html:ro
+    networks:
+      - yxorp-network
+    labels:
+      - "com.yxorp.service=demo-backend"
+
+networks:
+  yxorp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

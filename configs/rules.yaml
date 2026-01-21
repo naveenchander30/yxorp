@@ -8,7 +8,8 @@ server:
 
 proxy:
   targets:
-    - "example.com"
+    - "http://demo-backend:80"
+  max_request_size: 2097152  # 2MB
 
 security:
   block_user_agents:
@@ -35,11 +36,11 @@ security:
   rules:
     - name: "SQL Injection Prevention"
       pattern: "(?i)(UNION\\s+SELECT|DROP\\s+TABLE|'\\s+OR\\s+1=1|'\\s+OR\\s+'1'='1|INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+.*?\\s+SET|EXEC\\s+|xp_cmdshell|SELECT.*?\\s+FROM|HAVING|GROUP\\s+BY|ORDER\\s+BY.*?--)"
-      location: "header"
+      location: "headers"
 
     - name: "XSS Prevention"
       pattern: "(<script|<iframe|<object|<embed|onerror=|onload=|javascript:|<img.*?onerror|<svg.*?onload|alert\\(|document\\.cookie|window\\.location)"
-      location: "header"
+      location: "headers"
 
     - name: "Path Traversal Prevention"
       pattern: "(\\.\\.[\\/]|\\.\\.\\\\|%2e%2e%2f|%2e%2e/|%2e%2e\\\\|/etc/passwd|/etc/shadow|C:\\\\Windows)"
@@ -47,11 +48,11 @@ security:
 
     - name: "Command Injection Prevention"
       pattern: "(;.*?cat |;.*?ls |\\|.*?whoami|\\|.*?pwd|`.*?`|\\$\\(.*?\\)|&&.*?rm |;.*?wget |;.*?curl )"
-      location: "header"
+      location: "headers"
 
     - name: "LDAP Injection Prevention"
       pattern: "(\\*\\)\\(uid=\\*|\\*\\)\\(|\\)\\(\\||admin\\*\\)\\(\\||\\*\\)\\(cn=)"
-      location: "header"
+      location: "headers"
 
     - name: "XXE Prevention"
       pattern: "(<!ENTITY|<!DOCTYPE.*?\\[|SYSTEM \"file://|SYSTEM 'file://|PUBLIC.*?SYSTEM)"
@@ -59,7 +60,7 @@ security:
 
     - name: "NoSQL Injection Prevention"
       pattern: "(\\$ne|\\$gt|\\$lt|\\$where|\\$regex|\\$in\\[|\\[\\$ne\\]|\\[\\$gt\\])"
-      location: "header"
+      location: "headers"
 
     - name: "Remote Code Execution Prevention"
       pattern: "(eval\\(|exec\\(|system\\(|shell_exec|passthru|base64_decode\\(|assert\\(|preg_replace.*?\\/e)"
@@ -67,7 +68,7 @@ security:
 
     - name: "Server-Side Template Injection"
       pattern: "(\\{\\{.*?\\}\\}|\\{%.*?%\\}|\\$\\{.*?\\}|<%.*?%>|#\\{.*?\\})"
-      location: "header"
+      location: "headers"
 
     - name: "File Upload Attacks"
       pattern: "(\\.php|\\.jsp|\\.asp|\\.aspx|\\.exe|\\.sh|\\.bat|\\.cmd|\\.ps1)"
@@ -75,15 +76,15 @@ security:
 
     - name: "Header Injection"
       pattern: "(\\r\\n|%0d%0a|\\\\r\\\\n|Set-Cookie:|Location:)"
-      location: "header"
+      location: "headers"
 
     - name: "Open Redirect"
       pattern: "(https?://|//|javascript:|data:|vbscript:)"
-      location: "header"
+      location: "headers"
 
     - name: "SSRF Prevention"
       pattern: "(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::\\]|file://|dict://|gopher://)"
-      location: "header"
+      location: "headers"
 
     - name: "Prototype Pollution"
       pattern: "(__proto__|constructor\\[prototype\\]|prototype\\.)"
@@ -91,7 +92,7 @@ security:
 
     - name: "JWT Attacks"
       pattern: "(eyJ.*?\\.eyJ.*?\\.|\"alg\":\"none\"|\"typ\":\"JWT\")"
-      location: "header"
+      location: "headers"
 
     - name: "Credential Stuffing Keywords"
       pattern: "(password=.*?&password=|admin.*?123456|root.*?password|test.*?test)"
@@ -111,19 +112,19 @@ security:
 
     - name: "Log Injection"
       pattern: "(%0a|\\\\n|\\r\\n.*?INFO|\\r\\n.*?ERROR|\\r\\n.*?DEBUG)"
-      location: "header"
+      location: "headers"
 
     - name: "CRLF Injection"
       pattern: "(%0d%0a|\\r\\n|%0a|%0d|\\\\r\\\\n)"
-      location: "header"
+      location: "headers"
 
     - name: "OGNL Injection"
       pattern: "(@java\\.lang|#context|#_memberAccess|#application|#session|struts\\.)"
-      location: "header"
+      location: "headers"
 
     - name: "Expression Language Injection"
       pattern: "(\\$\\{.*?applicationScope|\\$\\{.*?sessionScope|\\$\\{.*?requestScope|\\$\\{.*?pageContext)"
-      location: "header"
+      location: "headers"
 
     - name: "GraphQL Injection"
       pattern: "(query.*?\\{.*?__schema|mutation.*?\\{.*?introspection|__type\\(|__typename)"
@@ -131,7 +132,7 @@ security:
 
     - name: "DNS Rebinding"
       pattern: "(0x7f\\.0x0\\.0x0\\.0x1|0177\\.0\\.0\\.01|2130706433|017700000001)"
-      location: "header"
+      location: "headers"
 
     - name: "Unicode Attacks"
       pattern: "(%u|\\\\u00|%c0%ae|%e0%80%ae)"
@@ -147,7 +148,7 @@ security:
 
     - name: "Format String Attack"
       pattern: "(%n|%s|%x|%d|%p|%hn)"
-      location: "header"
+      location: "headers"
 
     - name: "SMTP Injection"
       pattern: "(bcc:|cc:|to:|from:|subject:|content-type:|mime-version:)"
@@ -155,11 +156,11 @@ security:
 
     - name: "CSS Injection"
       pattern: "(expression\\(|@import|javascript:|behaviour:|binding:|moz-binding:)"
-      location: "header"
+      location: "headers"
 
     - name: "Buffer Overflow Attempts"
       pattern: "(A{100,}|0x[0-9a-f]{100,}|\\\\x[0-9a-f]{100,})"
-      location: "header"
+      location: "headers"
 
     - name: "PHP Object Injection"
       pattern: "(O:[0-9]+:\"|a:[0-9]+:\\{|s:[0-9]+:\"|C:[0-9]+:)"
@@ -167,23 +168,23 @@ security:
 
     - name: "Spring4Shell"
       pattern: "(class\\.module\\.classLoader|class\\.classLoader\\.resources)"
-      location: "header"
+      location: "headers"
 
     - name: "Log4Shell"
       pattern: "(\\$\\{jndi:|\\$\\{ldap:|\\$\\{rmi:|\\$\\{dns:)"
-      location: "header"
+      location: "headers"
 
     - name: "Shell Shock"
       pattern: "(\\(\\) \\{|\\} ;|\\{\\} ;)"
-      location: "header"
+      location: "headers"
 
     - name: "XPATH Injection"
       pattern: "(' or 1=1 or ''='|\\] \\| /|//*\\[|substring\\(|string-length\\()"
-      location: "header"
+      location: "headers"
 
     - name: "Race Condition Exploitation"
       pattern: "(\\?debug=1|\\?test=1|X-Debug-Token|X-Forwarded-For:.*?127\\.0\\.0\\.1)"
-      location: "header"
+      location: "headers"
 
     - name: "Mass Assignment"
       pattern: "(is_admin=|role=admin|privileges=|user_type=admin)"
