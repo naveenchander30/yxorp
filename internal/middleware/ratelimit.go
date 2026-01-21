@@ -17,12 +17,13 @@ type Client struct {
 }
 
 type RateLimiter struct {
-	mu              sync.Mutex
+	mu              sync.RWMutex
 	clients         map[string]*Client
 	rate            float64 // tokens per second
 	burst           float64 // max tokens
 	cleanupInterval time.Duration
 	enabled         bool
+	stopCleanup     chan struct{}
 }
 
 func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
@@ -38,6 +39,7 @@ func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
 		burst:           float64(cfg.RequestsPerMinute), // Burst size = 1 minute worth of requests
 		cleanupInterval: 10 * time.Minute,
 		enabled:         cfg.Enabled,
+		stopCleanup:     make(chan struct{}),
 	}
 
 	// Background cleanup routine
@@ -46,18 +48,29 @@ func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
 	return rl
 }
 
+func (rl *RateLimiter) Stop() {
+	close(rl.stopCleanup)
+}
+
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(rl.cleanupInterval)
-	for range ticker.C {
-		rl.mu.Lock()
-		// Remove clients that haven't been seen for a while (e.g., 1 hour)
-		expiry := time.Now().Add(-1 * time.Hour)
-		for ip, client := range rl.clients {
-			if client.lastUpdate.Before(expiry) {
-				delete(rl.clients, ip)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			rl.mu.Lock()
+			// Remove clients that haven't been seen for a while (e.g., 1 hour)
+			expiry := time.Now().Add(-1 * time.Hour)
+			for ip, client := range rl.clients {
+				if client.lastUpdate.Before(expiry) {
+					delete(rl.clients, ip)
+				}
 			}
+			rl.mu.Unlock()
+		case <-rl.stopCleanup:
+			return
 		}
-		rl.mu.Unlock()
 	}
 }
 
