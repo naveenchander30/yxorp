@@ -157,17 +157,23 @@ func (lb *LoadBalancer) HealthCheck() {
 
 	t := time.NewTicker(time.Second * 10)
 	for range t.C {
+		var wg sync.WaitGroup
 		for _, b := range lb.backends {
-			alive := isBackendAlive(b.URL)
-			b.SetAlive(alive)
-			status := "healthy"
-			if !alive {
-				status = "down"
-				logger.Warn("Backend health check failed", "url", b.URL.String(), "status", status)
-			} else {
-				logger.Info("Backend health check", "url", b.URL.String(), "status", status)
-			}
+			wg.Add(1)
+			go func(backend *Backend) {
+				defer wg.Done()
+				alive := isBackendAlive(backend.URL)
+				backend.SetAlive(alive)
+				status := "healthy"
+				if !alive {
+					status = "down"
+					logger.Warn("Backend health check failed", "url", backend.URL.String(), "status", status)
+				} else {
+					logger.Info("Backend health check", "url", backend.URL.String(), "status", status)
+				}
+			}(b)
 		}
+		wg.Wait()
 	}
 }
 
