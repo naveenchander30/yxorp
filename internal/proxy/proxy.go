@@ -36,6 +36,14 @@ func (b *Backend) IsAlive() bool {
 	return b.Alive
 }
 
+// BackendInfo contains backend status information
+type BackendInfo struct {
+	URL          string `json:"url"`
+	Alive        bool   `json:"alive"`
+	CircuitOpen  bool   `json:"circuit_open"`
+	FailureCount int    `json:"failure_count"`
+}
+
 type LoadBalancer struct {
 	backends       []*Backend
 	current        uint64
