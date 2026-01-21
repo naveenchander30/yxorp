@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -39,6 +40,9 @@ type LoadBalancer struct {
 	backends       []*Backend
 	current        uint64
 	maxRequestSize int64
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
 }
 
 func NewLoadBalancer(targets []string, maxRequestSize int64) (*LoadBalancer, error) {
@@ -48,6 +52,8 @@ func NewLoadBalancer(targets []string, maxRequestSize int64) (*LoadBalancer, err
 	// In a real app, pass these as config
 	cbThreshold := 5
 	cbTimeout := 30 * time.Second
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	for _, targetURL := range targets {
 		if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
@@ -100,19 +106,23 @@ func NewLoadBalancer(targets []string, maxRequestSize int64) (*LoadBalancer, err
 	lb := &LoadBalancer{
 		backends:       backends,
 		maxRequestSize: maxRequestSize,
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 
 	// Start health check
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logger.Error("Health check goroutine panic recovered", "panic", r)
-			}
-		}()
-		lb.HealthCheck()
-	}()
+	lb.wg.Add(1)
+	go lb.HealthCheck()
 
 	return lb, nil
+}
+
+// Stop gracefully stops the load balancer and waits for health checks to complete
+func (lb *LoadBalancer) Stop() {
+	if lb.cancel != nil {
+		lb.cancel()
+	}
+	lb.wg.Wait()
 }
 
 func (lb *LoadBalancer) NextIndex() int {
@@ -173,33 +183,47 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (lb *LoadBalancer) HealthCheck() {
-	// Wait 3 seconds before first check to avoid race condition on startup
-	time.Sleep(3 * time.Second)
+	defer lb.wg.Done()
 
-	t := time.NewTicker(time.Second * 10)
-	for range t.C {
-		var wg sync.WaitGroup
-		for _, b := range lb.backends {
-			wg.Add(1)
-			go func(backend *Backend) {
-				defer func() {
-					if r := recover(); r != nil {
-						logger.Error("Backend health check goroutine panic recovered", "panic", r, "url", backend.URL.String())
+	// Wait 3 seconds before first check to avoid race condition on startup
+	select {
+	case <-time.After(3 * time.Second):
+	case <-lb.ctx.Done():
+		return
+	}
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-lb.ctx.Done():
+			logger.Info("Health check stopped")
+			return
+		case <-ticker.C:
+			var wg sync.WaitGroup
+			for _, b := range lb.backends {
+				wg.Add(1)
+				go func(backend *Backend) {
+					defer func() {
+						if r := recover(); r != nil {
+							logger.Error("Backend health check goroutine panic recovered", "panic", r, "url", backend.URL.String())
+						}
+						wg.Done()
+					}()
+					alive := isBackendAlive(backend.URL)
+					backend.SetAlive(alive)
+					status := "healthy"
+					if !alive {
+						status = "down"
+						logger.Warn("Backend health check failed", "url", backend.URL.String(), "status", status)
+					} else {
+						logger.Info("Backend health check", "url", backend.URL.String(), "status", status)
 					}
-					wg.Done()
-				}()
-				alive := isBackendAlive(backend.URL)
-				backend.SetAlive(alive)
-				status := "healthy"
-				if !alive {
-					status = "down"
-					logger.Warn("Backend health check failed", "url", backend.URL.String(), "status", status)
-				} else {
-					logger.Info("Backend health check", "url", backend.URL.String(), "status", status)
-				}
-			}(b)
+				}(b)
+			}
+			wg.Wait()
 		}
-		wg.Wait()
 	}
 }
 
