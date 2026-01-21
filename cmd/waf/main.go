@@ -79,48 +79,56 @@ func main() {
 	var engineMu sync.RWMutex
 	currentEngine := ruleEngine
 
-	// Config Watcher
+	// Config Watcher with cancellation support
+	configWatcherCtx, cancelConfigWatcher := context.WithCancel(context.Background())
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
 		var lastMod time.Time
-		for range ticker.C {
-			info, err := os.Stat(configPath)
-			if err != nil {
-				continue
-			}
-			if !lastMod.IsZero() && info.ModTime().After(lastMod) {
-				logger.Info("Configuration change detected, reloading...")
-				newCfg, err := config.LoadConfig(configPath)
+		for {
+			select {
+			case <-ticker.C:
+				info, err := os.Stat(configPath)
 				if err != nil {
-					logger.Error("Failed to reload config", "error", err)
-					metrics.RecordConfigReloadFailure()
 					continue
 				}
+				if !lastMod.IsZero() && info.ModTime().After(lastMod) {
+					logger.Info("Configuration change detected, reloading...")
+					newCfg, err := config.LoadConfig(configPath)
+					if err != nil {
+						logger.Error("Failed to reload config", "error", err)
+						metrics.RecordConfigReloadFailure()
+						continue
+					}
 
-				// Validate new configuration before applying
-				if err := validation.ValidateConfig(newCfg); err != nil {
-					logger.Error("Configuration validation failed, keeping old config", "error", err)
-					metrics.RecordConfigReloadFailure()
-					continue
+					// Validate new configuration before applying
+					if err := validation.ValidateConfig(newCfg); err != nil {
+						logger.Error("Configuration validation failed, keeping old config", "error", err)
+						metrics.RecordConfigReloadFailure()
+						continue
+					}
+
+					newEngine, err := rules.NewEngine(newCfg.Security.Rules)
+					if err != nil {
+						logger.Error("Failed to reload rules", "error", err)
+						metrics.RecordConfigReloadFailure()
+						continue
+					}
+
+					cfgManager.Set(newCfg)
+
+					engineMu.Lock()
+					currentEngine = newEngine
+					engineMu.Unlock()
+
+					metrics.RecordConfigReload()
+					logger.Info("Configuration reloaded successfully")
 				}
-
-				newEngine, err := rules.NewEngine(newCfg.Security.Rules)
-				if err != nil {
-					logger.Error("Failed to reload rules", "error", err)
-					metrics.RecordConfigReloadFailure()
-					continue
-				}
-
-				cfgManager.Set(newCfg)
-
-				engineMu.Lock()
-				currentEngine = newEngine
-				engineMu.Unlock()
-
-				metrics.RecordConfigReload()
-				logger.Info("Configuration reloaded successfully")
+				lastMod = info.ModTime()
+			case <-configWatcherCtx.Done():
+				logger.Info("Config watcher stopped")
+				return
 			}
-			lastMod = info.ModTime()
 		}
 	}()
 
@@ -214,6 +222,11 @@ func main() {
 			json.NewEncoder(w).Encode(response)
 		})))
 
+		http.Handle("/api/backends", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(rp.GetBackendMetrics())
+		})))
+
 		http.Handle("/api/config", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			if r.Method == http.MethodGet {
@@ -276,7 +289,7 @@ func main() {
 		}
 	}()
 
-	// 8. Graceful Shutdown
+	// 10. Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -285,9 +298,15 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Shutdown main server
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("Server forced to shutdown", "error", err)
 	}
+
+	// Cleanup background goroutines
+	logger.Info("Cleaning up background tasks...")
+	rateLimiter.Stop()
+	cancelConfigWatcher()
 
 	logger.Info("Server exited properly")
 }
