@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"log/slog"
 	"os"
 )
@@ -17,6 +18,18 @@ func Init() {
 					Value: a.Value,
 				}
 			}
+			if a.Key == slog.LevelKey {
+				return slog.Attr{
+					Key:   "level",
+					Value: a.Value,
+				}
+			}
+			if a.Key == slog.MessageKey {
+				return slog.Attr{
+					Key:   "message",
+					Value: a.Value,
+				}
+			}
 			return a
 		},
 	})
@@ -27,10 +40,30 @@ func Info(msg string, args ...any) {
 	Log.Info(msg, args...)
 }
 
+func InfoContext(ctx context.Context, msg string, args ...any) {
+	Log.InfoContext(ctx, msg, args...)
+}
+
 func Error(msg string, args ...any) {
 	Log.Error(msg, args...)
 }
 
+func ErrorContext(ctx context.Context, msg string, args ...any) {
+	Log.ErrorContext(ctx, msg, args...)
+}
+
 func Warn(msg string, args ...any) {
 	Log.Warn(msg, args...)
+}
+
+func WarnContext(ctx context.Context, msg string, args ...any) {
+	Log.WarnContext(ctx, msg, args...)
+}
+
+func Debug(msg string, args ...any) {
+	Log.Debug(msg, args...)
+}
+
+func DebugContext(ctx context.Context, msg string, args ...any) {
+	Log.DebugContext(ctx, msg, args...)
 }
