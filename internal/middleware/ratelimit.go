@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/yxorp/internal/config"
+	"github.com/yxorp/internal/degradation"
 	"github.com/yxorp/pkg/logger"
 )
 
@@ -112,6 +113,15 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		if !rl.enabled {
 			next.ServeHTTP(w, r)
 			return
+		}
+
+		// Check if rate limiting should be bypassed due to degradation
+		if mgr := r.Context().Value("degradation_manager"); mgr != nil {
+			if dm, ok := mgr.(*degradation.Manager); ok && dm.ShouldBypassRateLimit() {
+				logger.Warn("Rate limiting bypassed due to degradation", "client_ip", r.RemoteAddr)
+				next.ServeHTTP(w, r)
+				return
+			}
 		}
 
 		ip := rl.getClientIP(r)

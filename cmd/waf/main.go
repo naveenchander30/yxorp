@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/yxorp/internal/config"
+	"github.com/yxorp/internal/degradation"
 	"github.com/yxorp/internal/metrics"
 	"github.com/yxorp/internal/middleware"
 	"github.com/yxorp/internal/proxy"
@@ -35,7 +36,11 @@ func main() {
 	metrics.Init()
 	logger.Info("Prometheus metrics initialized")
 
-	// 3. Load Configuration
+	// 3. Initialize Degradation Manager
+	degradationMgr := degradation.NewManager()
+	logger.Info("Degradation manager initialized")
+
+	// 4. Load Configuration
 	configPath := "configs/rules.yaml"
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
@@ -46,18 +51,20 @@ func main() {
 	// Initialize Config Manager
 	cfgManager := config.NewManager(cfg)
 
-	// 4. Initialize Load Balancer
+	// 5. Initialize Load Balancer
 	rp, err := proxy.NewLoadBalancer(cfg.Proxy.Targets, cfg.Proxy.MaxRequestSize)
 	if err != nil {
 		logger.Error("Failed to initialize load balancer", "error", err)
 		os.Exit(1)
 	}
 
-	// 5. Initialize Security Rules Engine
+	// 6. Initialize Security Rules Engine
 	ruleEngine, err := rules.NewEngine(cfg.Security.Rules)
 	if err != nil {
 		logger.Error("Failed to initialize security rules engine", "error", err)
-		os.Exit(1)
+		degradationMgr.SetComponentStatus(degradation.ComponentRuleEngine, degradation.StatusFailed)
+		logger.Warn("Continuing with degraded rule engine")
+		ruleEngine = nil
 	}
 
 	// Thread-safe container for Rules Engine
@@ -102,10 +109,10 @@ func main() {
 		}
 	}()
 
-	// 5. Initialize Rate Limiter
+	// 7. Initialize Rate Limiter
 	rateLimiter := middleware.NewRateLimiter(cfg.Security.RateLimit)
 
-	// 6. Setup Middleware Chain
+	// 8. Setup Middleware Chain
 	// Request Flow: Client -> [Rate Limiter] -> [Security Rules Engine] -> [Request Logger] -> [Circuit Breaker] -> [Reverse Proxy] -> Target Server
 
 	// We build the chain from outer to inner.
@@ -114,6 +121,7 @@ func main() {
 
 	// Current available middlewares:
 	// - RecoveryMiddleware (Top level)
+	// - DegradationMiddleware (passes degradation manager to context)
 	// - MetricsMiddleware
 	// - RateLimiter
 	// - SecurityMiddleware (User-Agent blocking + Rules Engine)
@@ -123,6 +131,7 @@ func main() {
 	finalHandler := middleware.Chain(
 		rp,
 		middleware.RecoveryMiddleware,
+		middleware.DegradationMiddleware(degradationMgr),
 		middleware.RequestIDMiddleware(),
 		middleware.SecureHeadersMiddleware(),
 		middleware.GzipMiddleware(),
@@ -139,7 +148,7 @@ func main() {
 		middleware.RequestLogger,
 	)
 
-	// 7. Start Server
+	// 9. Start Server
 	srv := server.NewServer(cfg.Server, finalHandler)
 
 	// Start Metrics Server (separate port)
@@ -175,9 +184,16 @@ func main() {
 			json.NewEncoder(w).Encode(cfgManager.Get().Security.Rules)
 		})
 
-		http.HandleFunc("/api/backends", func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/api/degradation", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(rp.GetBackendMetrics())
+			statuses := degradationMgr.GetAllComponentStatuses()
+			mode := degradationMgr.GetMode()
+
+			response := map[string]interface{}{
+				"mode":       mode,
+				"components": statuses,
+			}
+			json.NewEncoder(w).Encode(response)
 		})
 
 		http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {

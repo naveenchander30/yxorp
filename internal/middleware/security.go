@@ -76,6 +76,13 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 
 			// 2. Rule Engine Inspection
 			if ruleEngine != nil {
+				// Check if rule engine should be bypassed due to degradation
+				if degradationMgr != nil && degradationMgr.ShouldBypassRules() {
+					logger.Warn("Rule engine bypassed due to degradation", "client_ip", r.RemoteAddr)
+					next.ServeHTTP(w, r)
+					return
+				}
+
 				var bodyBytes []byte
 				// Only read body if we have rules that might check it
 				if ruleEngine.HasBodyRules() {
