@@ -125,6 +125,20 @@ func (lb *LoadBalancer) Stop() {
 	lb.wg.Wait()
 }
 
+// GetBackendMetrics returns metrics for all backends
+func (lb *LoadBalancer) GetBackendMetrics() []map[string]interface{} {
+	var metrics []map[string]interface{}
+	for _, backend := range lb.backends {
+		cbMetrics := backend.CB.GetMetrics()
+		metrics = append(metrics, map[string]interface{}{
+			"url":             backend.URL.String(),
+			"alive":           backend.IsAlive(),
+			"circuit_breaker": cbMetrics,
+		})
+	}
+	return metrics
+}
+
 func (lb *LoadBalancer) NextIndex() int {
 	return int(atomic.AddUint64(&lb.current, 1) % uint64(len(lb.backends)))
 }

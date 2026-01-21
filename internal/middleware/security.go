@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/yxorp/internal/config"
+	"github.com/yxorp/internal/degradation"
 	"github.com/yxorp/internal/rules"
 	"github.com/yxorp/pkg/logger"
 )
@@ -17,6 +18,14 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cfg := cfgGetter()
 			ruleEngine := engineGetter()
+
+			// Get degradation manager from context if available
+			var degradationMgr *degradation.Manager
+			if mgr := r.Context().Value("degradation_manager"); mgr != nil {
+				if dm, ok := mgr.(*degradation.Manager); ok {
+					degradationMgr = dm
+				}
+			}
 
 			// 0. Gzip Bomb Protection
 			if r.Header.Get("Content-Encoding") == "gzip" {

@@ -175,6 +175,11 @@ func main() {
 			json.NewEncoder(w).Encode(cfgManager.Get().Security.Rules)
 		})
 
+		http.HandleFunc("/api/backends", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(rp.GetBackendMetrics())
+		})
+
 		http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			if r.Method == http.MethodGet {
