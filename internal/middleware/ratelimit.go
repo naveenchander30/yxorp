@@ -43,7 +43,14 @@ func NewRateLimiter(cfg config.RateLimitConfig) *RateLimiter {
 	}
 
 	// Background cleanup routine
-	go rl.cleanup()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("Rate limiter cleanup goroutine panic recovered", "panic", r)
+			}
+		}()
+		rl.cleanup()
+	}()
 
 	return rl
 }

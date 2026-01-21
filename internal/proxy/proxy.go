@@ -103,7 +103,14 @@ func NewLoadBalancer(targets []string, maxRequestSize int64) (*LoadBalancer, err
 	}
 
 	// Start health check
-	go lb.HealthCheck()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error("Health check goroutine panic recovered", "panic", r)
+			}
+		}()
+		lb.HealthCheck()
+	}()
 
 	return lb, nil
 }
@@ -175,7 +182,12 @@ func (lb *LoadBalancer) HealthCheck() {
 		for _, b := range lb.backends {
 			wg.Add(1)
 			go func(backend *Backend) {
-				defer wg.Done()
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Error("Backend health check goroutine panic recovered", "panic", r, "url", backend.URL.String())
+					}
+					wg.Done()
+				}()
 				alive := isBackendAlive(backend.URL)
 				backend.SetAlive(alive)
 				status := "healthy"
