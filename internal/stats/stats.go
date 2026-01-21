@@ -63,36 +63,9 @@ func GetSystemStats() SystemStats {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	// Format uptime as HH:MM:SS
+	// Format uptime - truncate to seconds for simplicity
 	duration := time.Since(startTime)
-	hours := int(duration.Hours())
-	minutes := int(duration.Minutes()) % 60
-	seconds := int(duration.Seconds()) % 60
-	uptime := ""
-	if hours > 0 {
-		uptime = time.Duration(hours*int(time.Hour) + minutes*int(time.Minute) + seconds*int(time.Second)).String()
-		// Remove microseconds/nanoseconds
-		if idx := len(uptime) - 1; uptime[idx] == 's' {
-			// Find last digit before 's'
-			for i := idx - 1; i >= 0; i-- {
-				if uptime[i] == '.' {
-					uptime = uptime[:i] + "s"
-					break
-				}
-			}
-		}
-	} else {
-		uptime = time.Duration(minutes*int(time.Minute) + seconds*int(time.Second)).String()
-		// Remove microseconds/nanoseconds
-		if idx := len(uptime) - 1; idx > 0 && uptime[idx] == 's' {
-			for i := idx - 1; i >= 0; i-- {
-				if uptime[i] == '.' {
-					uptime = uptime[:i] + "s"
-					break
-				}
-			}
-		}
-	}
+	uptime := duration.Truncate(time.Second).String()
 
 	return SystemStats{
 		Goroutines: runtime.NumGoroutine(),
