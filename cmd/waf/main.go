@@ -21,6 +21,7 @@ import (
 	"github.com/yxorp/internal/rules"
 	"github.com/yxorp/internal/server"
 	"github.com/yxorp/internal/stats"
+	"github.com/yxorp/internal/validation"
 	"github.com/yxorp/pkg/logger"
 )
 
@@ -47,6 +48,13 @@ func main() {
 		logger.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
 	}
+
+	// Perform comprehensive validation
+	if err := validation.ValidateConfig(cfg); err != nil {
+		logger.Error("Configuration validation failed", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Configuration validated successfully")
 
 	// Initialize Config Manager
 	cfgManager := config.NewManager(cfg)
@@ -85,6 +93,13 @@ func main() {
 				newCfg, err := config.LoadConfig(configPath)
 				if err != nil {
 					logger.Error("Failed to reload config", "error", err)
+					metrics.RecordConfigReloadFailure()
+					continue
+				}
+
+				// Validate new configuration before applying
+				if err := validation.ValidateConfig(newCfg); err != nil {
+					logger.Error("Configuration validation failed, keeping old config", "error", err)
 					metrics.RecordConfigReloadFailure()
 					continue
 				}
@@ -212,8 +227,12 @@ func main() {
 					return
 				}
 
-				// Validate?
-				// For now, trust the user (admin).
+				// Validate configuration before applying
+				if err := validation.ValidateConfig(&newCfg); err != nil {
+					http.Error(w, "Configuration validation failed: "+err.Error(), http.StatusBadRequest)
+					metrics.RecordConfigReloadFailure()
+					return
+				}
 
 				if err := cfgManager.Update(configPath, &newCfg); err != nil {
 					http.Error(w, "Failed to save config: "+err.Error(), http.StatusInternalServerError)

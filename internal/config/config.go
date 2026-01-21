@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"sync"
 	"time"
@@ -52,14 +51,28 @@ type SecurityRule struct {
 	Location string `yaml:"location"`
 }
 
+// Validate performs basic validation (kept for backwards compatibility)
+// For comprehensive validation, use validation.ValidateConfig
 func (c *Config) Validate() error {
+	// Import would cause circular dependency, so we use a simple validation here
+	// The comprehensive validation is in the validation package
 	if c.Server.Port == "" {
-		return errors.New("server port is required")
+		return &ValidationError{Field: "server.port", Message: "port is required"}
 	}
 	if len(c.Proxy.Targets) == 0 {
-		return errors.New("at least one proxy target is required")
+		return &ValidationError{Field: "proxy.targets", Message: "at least one proxy target is required"}
 	}
 	return nil
+}
+
+// ValidationError represents a simple validation error
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Field + ": " + e.Message
 }
 
 func LoadConfig(path string) (*Config, error) {
