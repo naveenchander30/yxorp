@@ -41,7 +41,7 @@ func AddLog(entry LogEntry) {
 	logMu.Lock()
 	defer logMu.Unlock()
 
-	// Prepend (newest first)
+	// Prepend (newest first) and maintain size
 	logBuffer = append([]LogEntry{entry}, logBuffer...)
 	if len(logBuffer) > maxLogs {
 		logBuffer = logBuffer[:maxLogs]

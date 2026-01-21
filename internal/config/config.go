@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"sync"
 	"time"
@@ -48,6 +49,16 @@ type SecurityRule struct {
 	Location string `yaml:"location"`
 }
 
+func (c *Config) Validate() error {
+	if c.Server.Port == "" {
+		return errors.New("server port is required")
+	}
+	if len(c.Proxy.Targets) == 0 {
+		return errors.New("at least one proxy target is required")
+	}
+	return nil
+}
+
 func LoadConfig(path string) (*Config, error) {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -60,6 +71,10 @@ func LoadConfig(path string) (*Config, error) {
 	var cfg Config
 	decoder := yaml.NewDecoder(f)
 	if err := decoder.Decode(&cfg); err != nil {
+		return nil, err
+	}
+
+	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 

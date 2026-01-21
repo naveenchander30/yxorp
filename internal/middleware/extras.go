@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/yxorp/pkg/logger"
 )
 
 // RequestIDMiddleware adds a unique X-Request-ID header to each request
