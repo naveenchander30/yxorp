@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"strings"
@@ -11,30 +12,49 @@ import (
 	"github.com/yxorp/pkg/logger"
 )
 
+const maxDecompressedSize = 10 * 1024 * 1024 // 10MB limit
+
 func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter func() *rules.Engine) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cfg := cfgGetter()
 			ruleEngine := engineGetter()
 
-			// 1. User-Agent Blocking
-			userAgent := r.UserAgent()
+			// 0. Gzip Bomb Protection
+			if r.Header.Get("Content-Encoding") == "gzip" {
+				// Limit the size of the compressed body to avoid decompression bombs
+				r.Body = http.MaxBytesReader(w, r.Body, maxDecompressedSize)
 
-			// Block empty User-Agent if configured (implied by "empty strings" in requirements)
-			// The requirement says "Block suspicious User-Agent strings (e.g., curl, wget, empty strings)".
-			if userAgent == "" {
-				// Check if empty string is in the block list or if we should block it by default.
-				// For now, let's assume if "empty strings" is mentioned, we should block it.
-				// But let's check the config list first.
-				// Actually, let's just check if the user agent contains any of the blocked strings.
-			}
-
-			for _, blockedAgent := range cfg.BlockUserAgents {
-				if blockedAgent == "" && userAgent == "" {
-					logger.Warn("Blocked suspicious User-Agent", "client_ip", r.RemoteAddr, "user_agent", "empty")
-					http.Error(w, "Forbidden", http.StatusForbidden)
+				gr, err := gzip.NewReader(r.Body)
+				if err != nil {
+					logger.Warn("Failed to create gzip reader", "error", err)
+					http.Error(w, "Bad Request", http.StatusBadRequest)
 					return
 				}
+				defer gr.Close()
+
+				// Read the decompressed body, but limit its size
+				var decompressedBody bytes.Buffer
+				_, err = io.CopyN(&decompressedBody, gr, maxDecompressedSize+1)
+				if err != nil && err != io.EOF {
+					logger.Warn("Failed to decompress request body", "error", err)
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					return
+				}
+
+				if err == nil {
+					logger.Warn("Decompressed request body too large", "client_ip", r.RemoteAddr)
+					http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+					return
+				}
+
+				// Restore the body for subsequent handlers
+				r.Body = io.NopCloser(bytes.NewReader(decompressedBody.Bytes()))
+			}
+
+			// 1. User-Agent Blocking
+			userAgent := r.UserAgent()
+			for _, blockedAgent := range cfg.BlockUserAgents {
 				if blockedAgent != "" && strings.Contains(strings.ToLower(userAgent), strings.ToLower(blockedAgent)) {
 					logger.Warn("Blocked suspicious User-Agent", "client_ip", r.RemoteAddr, "user_agent", userAgent)
 					http.Error(w, "Forbidden", http.StatusForbidden)
