@@ -15,15 +15,20 @@ type Rule struct {
 }
 
 type Engine struct {
-	Rules []Rule
+	Rules       []Rule
+	hasBodyRule bool
 }
 
 func NewEngine(cfgRules []config.SecurityRule) (*Engine, error) {
 	var rules []Rule
+	hasBodyRule := false
 	for _, r := range cfgRules {
 		re, err := regexp.Compile(r.Pattern)
 		if err != nil {
 			return nil, fmt.Errorf("invalid regex for rule %s: %w", r.Name, err)
+		}
+		if r.Location == "body" {
+			hasBodyRule = true
 		}
 		rules = append(rules, Rule{
 			Name:     r.Name,
@@ -31,7 +36,11 @@ func NewEngine(cfgRules []config.SecurityRule) (*Engine, error) {
 			Location: r.Location,
 		})
 	}
-	return &Engine{Rules: rules}, nil
+	return &Engine{Rules: rules, hasBodyRule: hasBodyRule}, nil
+}
+
+func (e *Engine) HasBodyRules() bool {
+	return e.hasBodyRule
 }
 
 func (e *Engine) Check(r *http.Request, body []byte) (bool, string) {

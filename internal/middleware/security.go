@@ -45,9 +45,8 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 			// 2. Rule Engine Inspection
 			if ruleEngine != nil {
 				var bodyBytes []byte
-				// Only read body if method implies a body and we have rules that might check it
-				// For simplicity, we read it if it's not GET/HEAD/DELETE/OPTIONS
-				if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
+				// Only read body if we have rules that might check it
+				if ruleEngine.HasBodyRules() {
 					maxSize := cfg.MaxBodySize
 					if maxSize <= 0 {
 						maxSize = 10 * 1024 * 1024 // 10MB default
@@ -69,9 +68,6 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 						return
 					}
 					// Restore the body for the next handler
-					// Note: NopCloser needed because MaxBytesReader closes the connection on limit hit,
-					// but here we successfully read it (or failed).
-					// If we successfully read it, we need to provide it to the next handler.
 					r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 				}
 
