@@ -25,6 +25,7 @@ type ServerConfig struct {
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 	CertFile     string        `yaml:"cert_file"`
 	KeyFile      string        `yaml:"key_file"`
+	APIKey       string        `yaml:"api_key"` // API key for admin endpoints
 }
 
 type ProxyConfig struct {

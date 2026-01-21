@@ -155,6 +155,9 @@ func main() {
 	go func() {
 		logger.Info("Metrics server listening", "port", "8081")
 
+		// Create API authentication middleware
+		apiAuth := middleware.APIAuthMiddleware(cfg.Server.APIKey)
+
 		// Serve embedded dashboard
 		webFS, err := fs.Sub(webAssets, "web")
 		if err != nil {
@@ -163,28 +166,28 @@ func main() {
 			http.Handle("/", http.FileServer(http.FS(webFS)))
 		}
 
-		// Prometheus metrics endpoint
+		// Prometheus metrics endpoint (public, no auth required)
 		http.Handle("/metrics", metrics.Handler())
 
-		// API Endpoints
-		http.HandleFunc("/api/logs", func(w http.ResponseWriter, r *http.Request) {
+		// Protected API Endpoints
+		http.Handle("/api/logs", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(stats.GetRecentLogs())
-		})
+		})))
 
-		http.HandleFunc("/api/stats", func(w http.ResponseWriter, r *http.Request) {
+		http.Handle("/api/stats", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(stats.GetSystemStats())
-		})
+		})))
 
-		http.HandleFunc("/api/rules", func(w http.ResponseWriter, r *http.Request) {
+		http.Handle("/api/rules", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			engineMu.RLock()
 			defer engineMu.RUnlock()
 			json.NewEncoder(w).Encode(cfgManager.Get().Security.Rules)
-		})
+		})))
 
-		http.HandleFunc("/api/degradation", func(w http.ResponseWriter, r *http.Request) {
+		http.Handle("/api/degradation", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			statuses := degradationMgr.GetAllComponentStatuses()
 			mode := degradationMgr.GetMode()
@@ -194,9 +197,9 @@ func main() {
 				"components": statuses,
 			}
 			json.NewEncoder(w).Encode(response)
-		})
+		})))
 
-		http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		http.Handle("/api/config", apiAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			if r.Method == http.MethodGet {
 				json.NewEncoder(w).Encode(cfgManager.Get())
@@ -238,7 +241,7 @@ func main() {
 			} else {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
-		})
+		})))
 
 		// expvar registers handlers on http.DefaultServeMux
 		if err := http.ListenAndServe(":8081", nil); err != nil {

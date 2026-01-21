@@ -4,6 +4,7 @@ server:
   write_timeout: 10s
   # cert_file: "certs/server.crt"
   # key_file: "certs/server.key"
+  # api_key: "your-secret-api-key-here"  # Set via environment variable WAF_API_KEY for production
 
 proxy:
   targets:
