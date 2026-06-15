@@ -9,6 +9,7 @@ import (
 
 	"github.com/yxorp/internal/config"
 	"github.com/yxorp/internal/degradation"
+	"github.com/yxorp/internal/metrics"
 	"github.com/yxorp/pkg/logger"
 )
 
@@ -153,6 +154,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		} else {
 			rl.mu.Unlock()
 			logger.Warn("Rate limit exceeded", "client_ip", ip)
+			metrics.RecordRateLimitExceeded(ip)
 			w.Header().Set("Retry-After", "60") // Simple retry hint
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 		}

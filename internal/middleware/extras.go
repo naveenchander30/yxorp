@@ -52,7 +52,13 @@ type gzipResponseWriter struct {
 }
 
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	w.Header().Del("Content-Length")
 	return w.Writer.Write(b)
+}
+
+func (w gzipResponseWriter) WriteHeader(code int) {
+	w.Header().Del("Content-Length")
+	w.ResponseWriter.WriteHeader(code)
 }
 
 // GzipMiddleware compresses responses
@@ -65,6 +71,7 @@ func GzipMiddleware() Middleware {
 			}
 
 			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Del("Content-Length") // Delete if already set
 			gz := gzip.NewWriter(w)
 			defer gz.Close()
 

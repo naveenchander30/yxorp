@@ -20,6 +20,9 @@ var (
 
 func MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metrics.ActiveConnections.Inc()
+		defer metrics.ActiveConnections.Dec()
+
 		start := time.Now()
 
 		// Wrap response writer to capture status code

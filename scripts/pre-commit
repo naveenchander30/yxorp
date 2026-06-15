@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Pre-commit hook to enforce test immutability and run tests.
+
+# Allow bypassing immutability check if ALLOW_TEST_MODIFICATIONS=true is set
+if [ "$ALLOW_TEST_MODIFICATIONS" != "true" ]; then
+    staged_tests=$(git diff --cached --name-only | grep -E '_test\.go$')
+    if [ -n "$staged_tests" ]; then
+        echo "========================================================================"
+        echo "❌ COMMIT BLOCKED: Test Immutability Enforced"
+        echo "========================================================================"
+        echo "Modifying test files (*_test.go) is forbidden to prevent altering tests"
+        echo "to match broken implementations."
+        echo ""
+        echo "Staged test files:"
+        echo "$staged_tests"
+        echo ""
+        echo "If you explicitly need to modify tests (e.g., adding new tests), bypass"
+        echo "this block by setting the ALLOW_TEST_MODIFICATIONS=true env variable:"
+        echo "  ALLOW_TEST_MODIFICATIONS=true git commit"
+        echo "========================================================================"
+        exit 1
+    fi
+fi
+
+# Run automated tests before committing
+echo "========================================================================"
+echo "🧪 Running pre-commit automated test suite..."
+echo "========================================================================"
+
+if ! go test ./...; then
+    echo "========================================================================"
+    echo "❌ COMMIT BLOCKED: Automated tests failed!"
+    echo "Please fix the implementation before committing."
+    echo "========================================================================"
+    exit 1
+fi
+
+echo "========================================================================"
+echo "✅ SUCCESS: All tests passed. Proceeding with commit."
+echo "========================================================================"
+exit 0

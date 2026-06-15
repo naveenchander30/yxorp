@@ -9,6 +9,7 @@ import (
 
 	"github.com/yxorp/internal/config"
 	"github.com/yxorp/internal/degradation"
+	"github.com/yxorp/internal/metrics"
 	"github.com/yxorp/internal/rules"
 	"github.com/yxorp/pkg/logger"
 )
@@ -40,6 +41,7 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 				gr, err := gzip.NewReader(r.Body)
 				if err != nil {
 					logger.Warn("Failed to create gzip reader", "error", err)
+					metrics.RecordWAFBlock("gzip_bomb", "invalid_gzip_header")
 					http.Error(w, "Bad Request", http.StatusBadRequest)
 					return
 				}
@@ -49,13 +51,21 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 				var decompressedBody bytes.Buffer
 				_, err = io.CopyN(&decompressedBody, gr, maxDecompSize+1)
 				if err != nil && err != io.EOF {
+					if err.Error() == "http: request body too large" || strings.Contains(err.Error(), "request body too large") {
+						logger.Warn("Compressed request body too large", "client_ip", r.RemoteAddr)
+						metrics.RecordWAFBlock("gzip_bomb", "body_too_large")
+						http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+						return
+					}
 					logger.Warn("Failed to decompress request body", "error", err)
-					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					metrics.RecordWAFBlock("gzip_bomb", "decompression_failed")
+					http.Error(w, "Bad Request", http.StatusBadRequest)
 					return
 				}
 
 				if err == nil {
 					logger.Warn("Decompressed request body too large", "client_ip", r.RemoteAddr)
+					metrics.RecordWAFBlock("gzip_bomb", "body_too_large")
 					http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
 					return
 				}
@@ -69,6 +79,7 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 			for _, blockedAgent := range cfg.BlockUserAgents {
 				if blockedAgent != "" && strings.Contains(strings.ToLower(userAgent), strings.ToLower(blockedAgent)) {
 					logger.Warn("Blocked suspicious User-Agent", "client_ip", r.RemoteAddr, "user_agent", userAgent)
+					metrics.RecordWAFBlock("user_agent", "blocked_user_agent")
 					http.Error(w, "Forbidden", http.StatusForbidden)
 					return
 				}
@@ -97,8 +108,9 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 					var err error
 					bodyBytes, err = io.ReadAll(r.Body)
 					if err != nil {
-						if err.Error() == "http: request body too large" {
+						if err.Error() == "http: request body too large" || strings.Contains(err.Error(), "request body too large") {
 							logger.Warn("Request blocked: body too large", "client_ip", r.RemoteAddr)
+							metrics.RecordWAFBlock("body_size_limit", "body_too_large")
 							http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
 							return
 						}
@@ -113,6 +125,7 @@ func SecurityMiddleware(cfgGetter func() config.SecurityConfig, engineGetter fun
 				matched, ruleName := ruleEngine.Check(r, bodyBytes)
 				if matched {
 					logger.Warn("Request blocked by security rule", "client_ip", r.RemoteAddr, "rule", ruleName)
+					metrics.RecordWAFBlock(ruleName, "matched_security_rule")
 					http.Error(w, "Forbidden", http.StatusForbidden)
 					return
 				}

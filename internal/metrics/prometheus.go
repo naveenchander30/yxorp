@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -110,7 +111,7 @@ var (
 	)
 )
 
-// Init registers all metrics with Prometheus
+// Init registers all metrics with Prometheus and starts background collection of system metrics
 func Init() {
 	prometheus.MustRegister(
 		HTTPRequestsTotal,
@@ -126,6 +127,17 @@ func Init() {
 		ConfigReloads,
 		ConfigReloadFailures,
 	)
+
+	// Start background metric collection for memory usage
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		var m runtime.MemStats
+		for range ticker.C {
+			runtime.ReadMemStats(&m)
+			SetMemoryUsage(float64(m.Sys))
+		}
+	}()
 }
 
 // Handler returns the Prometheus metrics handler

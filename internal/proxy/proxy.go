@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/yxorp/internal/common"
+	"github.com/yxorp/internal/metrics"
 	"github.com/yxorp/internal/middleware"
 	"github.com/yxorp/pkg/logger"
 )
@@ -89,15 +91,20 @@ func NewLoadBalancer(targets []string, maxRequestSize int64) (*LoadBalancer, err
 			}
 		}
 
+		// Custom ErrorHandler to return 413 or 502/503 properly
+		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			logger.Error("Proxy error", "url", target.String(), "error", err)
+			if err == http.ErrBodyReadAfterClose || strings.Contains(err.Error(), "request body too large") {
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				w.Write([]byte("Request Entity Too Large"))
+				return
+			}
+			w.WriteHeader(http.StatusBadGateway)
+			w.Write([]byte("Bad Gateway"))
+		}
+
 		// ModifyResponse to check for 500 errors and trigger CB
 		proxy.ModifyResponse = func(resp *http.Response) error {
-			// This runs AFTER the request is sent to backend
-			// We can't easily access the specific backend struct here to call RecordFailure
-			// without complex context passing or closure.
-			// However, ServeHTTP below drives this.
-			// Actually, httputil.ReverseProxy doesn't return error on 500 status, it returns nil error and the response.
-			// So we can handle status codes in ServeHTTP wrapper or here.
-			// But since we have multiple backends, passing the CB into this closure is cleanest.
 			return nil
 		}
 
@@ -147,6 +154,11 @@ func (lb *LoadBalancer) GetBackendMetrics() []map[string]interface{} {
 	return metrics
 }
 
+// GetBackends returns the slice of backends
+func (lb *LoadBalancer) GetBackends() []*Backend {
+	return lb.backends
+}
+
 func (lb *LoadBalancer) NextIndex() int {
 	return int(atomic.AddUint64(&lb.current, 1) % uint64(len(lb.backends)))
 }
@@ -185,15 +197,20 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rw := common.NewResponseWriter(w)
 		peer.Proxy.ServeHTTP(rw, r)
 
+		// Record Prometheus metric for backend request
+		metrics.RecordBackendRequest(peer.URL.String(), strconv.Itoa(rw.StatusCode))
+
 		// Update Circuit Breaker based on response
 		// Note: httputil.ReverseProxy handles network errors by calling ErrorHandler (logging mostly)
 		// and returning 502. We need to catch that too.
 		// Ideally we wrap the ErrorHandler but for now checking status code is a good proxy.
 		if rw.StatusCode >= 500 {
 			peer.CB.RecordFailure()
+			metrics.RecordCircuitBreakerFailure(peer.URL.String())
 		} else {
 			peer.CB.RecordSuccess()
 		}
+		metrics.SetCircuitBreakerState(peer.URL.String(), peer.CB.GetState() == middleware.StateOpen)
 		return
 	}
 	// Log which backends are down
@@ -235,6 +252,7 @@ func (lb *LoadBalancer) HealthCheck() {
 					}()
 					alive := isBackendAlive(backend.URL)
 					backend.SetAlive(alive)
+					metrics.SetBackendHealth(backend.URL.String(), alive)
 					status := "healthy"
 					if !alive {
 						status = "down"
